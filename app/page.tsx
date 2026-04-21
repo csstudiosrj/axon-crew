@@ -3,33 +3,42 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { 
   UserPlus, MessageCircle, Search, Filter, CheckCircle2, Clock, 
-  MoreVertical, Star, X, Trash2, Edit, User, AlertTriangle, Send
+  MoreVertical, Star, X, Trash2, Edit, User, AlertTriangle, Send, Check
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 
+// Lista de Especialidades Padronizadas (Futuramente virá das Configurações)
+const ESPECIALIDADES =[
+  "Técnico de Áudio", "Iluminador(a)", "Técnico de Vídeo", 
+  "Roadie", "Produtor(a)", "Cenógrafo(a)", "Carregador", "Recepcionista"
+];
+
 export default function CrewDashboard() {
   // ================= ESTADOS GERAIS =================
-  const [freelancers, setFreelancers] = useState<any[]>([]);
+  const[freelancers, setFreelancers] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const[busca, setBusca] = useState("");
+  const [busca, setBusca] = useState("");
   const [filtroStatus, setFiltroStatus] = useState("todos");
+  const [filtroEspecialidade, setFiltroEspecialidade] = useState("todas");
   const [menuAberto, setMenuAberto] = useState<string | null>(null);
+  const [toast, setToast] = useState<{msg: string, tipo: 'sucesso' | 'erro'} | null>(null);
 
-  // RBAC (Role Based Access Control)
   const currentUserRole = "admin"; 
   const canViewFinancials = currentUserRole === "admin" || currentUserRole === "financeiro";
 
   // ================= ESTADOS DOS MODAIS =================
   const [modalFiltros, setModalFiltros] = useState(false);
-  const[filtrosAvancados, setFiltrosAvancados] = useState({ precoMax: 1000, avaliacaoMin: 0 });
+  const[filtrosAvancados, setFiltrosAvancados] = useState({ precoMax: 2000, avaliacaoMin: 0 });
 
   const [modalCadastro, setModalCadastro] = useState(false);
-  const[novoFreela, setNovoFreela] = useState({ nome: '', especialidade: '', telefone: '', diaria: '' });
+  const [novoFreela, setNovoFreela] = useState({ nome: '', especialidade: ESPECIALIDADES[0], telefone: '', diaria: '' });
 
-  const[modalStatus, setModalStatus] = useState<any | null>(null);
-  const[modalDelete, setModalDelete] = useState<any | null>(null);
+  const [modalStatus, setModalStatus] = useState<any | null>(null);
+  const [modalDelete, setModalDelete] = useState<any | null>(null);
+  const [modalAvaliacao, setModalAvaliacao] = useState<any | null>(null);
+  const [novaNota, setNovaNota] = useState(5);
   
-  const [modalWhatsapp, setModalWhatsapp] = useState<any | null>(null);
+  const[modalWhatsapp, setModalWhatsapp] = useState<any | null>(null);
   const [msgWhatsapp, setMsgWhatsapp] = useState("");
 
   // ================= EFEITOS E SUPABASE =================
@@ -40,20 +49,41 @@ export default function CrewDashboard() {
   const fetchFreelancers = async () => {
     setIsLoading(true);
     const { data, error } = await supabase.from('freelancers').select('*').order('created_at', { ascending: false });
-    if (!error && data) setFreelancers(data);
+    if (error) mostrarToast("Erro ao carregar dados do banco", "erro");
+    else if (data) setFreelancers(data);
     setIsLoading(false);
+  };
+
+  const mostrarToast = (msg: string, tipo: 'sucesso' | 'erro') => {
+    setToast({ msg, tipo });
+    setTimeout(() => setToast(null), 3000);
+  };
+
+  // ================= MÁSCARA DE WHATSAPP =================
+  const formatarTelefone = (valor: string) => {
+    let v = valor.replace(/\D/g, ""); // Remove tudo que não é número
+    if (v.length <= 11) {
+      v = v.replace(/^(\d{2})(\d)/g, "($1) $2");
+      v = v.replace(/(\d{5})(\d{4})$/, "$1-$2");
+    }
+    return v;
+  };
+
+  const handleTelefoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setNovoFreela({ ...novoFreela, telefone: formatarTelefone(e.target.value) });
   };
 
   // ================= LÓGICA DE FILTROS =================
   const freelancersFiltrados = useMemo(() => {
     return freelancers.filter((freela) => {
-      const matchBusca = freela.nome.toLowerCase().includes(busca.toLowerCase()) || freela.especialidade.toLowerCase().includes(busca.toLowerCase());
+      const matchBusca = freela.nome.toLowerCase().includes(busca.toLowerCase());
       const matchStatus = filtroStatus === "todos" || freela.status === filtroStatus;
+      const matchEspecialidade = filtroEspecialidade === "todas" || freela.especialidade === filtroEspecialidade;
       const matchPreco = freela.diaria <= filtrosAvancados.precoMax;
       const matchAvaliacao = freela.avaliacao >= filtrosAvancados.avaliacaoMin;
-      return matchBusca && matchStatus && matchPreco && matchAvaliacao;
+      return matchBusca && matchStatus && matchEspecialidade && matchPreco && matchAvaliacao;
     });
-  },[freelancers, busca, filtroStatus, filtrosAvancados]);
+  },[freelancers, busca, filtroStatus, filtroEspecialidade, filtrosAvancados]);
 
   const totalBase = freelancers.length;
   const totalDisponiveis = freelancers.filter(f => f.status === "disponivel").length;
@@ -62,19 +92,29 @@ export default function CrewDashboard() {
   // ================= FUNÇÕES DE AÇÃO (CRUD) =================
   const handleCadastrar = async (e: React.FormEvent) => {
     e.preventDefault();
+    const telefoneLimpo = novoFreela.telefone.replace(/\D/g, '');
+    
+    if(telefoneLimpo.length < 10) {
+      mostrarToast("Digite um telefone válido", "erro");
+      return;
+    }
+
     const { data, error } = await supabase.from('freelancers').insert([{
       nome: novoFreela.nome,
       especialidade: novoFreela.especialidade,
-      telefone: novoFreela.telefone.replace(/\D/g, ''),
+      telefone: telefoneLimpo,
       diaria: Number(novoFreela.diaria),
       status: 'disponivel',
       avaliacao: 5.0
     }]).select();
 
-    if (!error && data) {
+    if (error) {
+      mostrarToast("Erro ao salvar no banco", "erro");
+    } else if (data) {
       setFreelancers([data[0], ...freelancers]);
       setModalCadastro(false);
-      setNovoFreela({ nome: '', especialidade: '', telefone: '', diaria: '' });
+      setNovoFreela({ nome: '', especialidade: ESPECIALIDADES[0], telefone: '', diaria: '' });
+      mostrarToast("Freelancer cadastrado com sucesso!", "sucesso");
     }
   };
 
@@ -83,6 +123,19 @@ export default function CrewDashboard() {
     if (!error) {
       setFreelancers(freelancers.map(f => f.id === id ? { ...f, status: novoStatus } : f));
       setModalStatus(null);
+      mostrarToast("Status atualizado", "sucesso");
+    } else {
+      mostrarToast("Erro ao atualizar status", "erro");
+    }
+  };
+
+  const handleAvaliar = async () => {
+    if (!modalAvaliacao) return;
+    const { error } = await supabase.from('freelancers').update({ avaliacao: novaNota }).eq('id', modalAvaliacao.id);
+    if (!error) {
+      setFreelancers(freelancers.map(f => f.id === modalAvaliacao.id ? { ...f, avaliacao: novaNota } : f));
+      setModalAvaliacao(null);
+      mostrarToast("Avaliação atualizada", "sucesso");
     }
   };
 
@@ -92,6 +145,7 @@ export default function CrewDashboard() {
     if (!error) {
       setFreelancers(freelancers.filter(f => f.id !== modalDelete.id));
       setModalDelete(null);
+      mostrarToast("Freelancer removido", "sucesso");
     }
   };
 
@@ -102,7 +156,7 @@ export default function CrewDashboard() {
   };
 
   const enviarWhatsapp = () => {
-    const url = `https://wa.me/${modalWhatsapp.telefone}?text=${encodeURIComponent(msgWhatsapp)}`;
+    const url = `https://wa.me/55${modalWhatsapp.telefone}?text=${encodeURIComponent(msgWhatsapp)}`;
     window.open(url, "_blank");
     setModalWhatsapp(null);
   };
@@ -111,6 +165,14 @@ export default function CrewDashboard() {
   return (
     <div className="p-6 md:p-8 max-w-7xl mx-auto w-full relative">
       
+      {/* TOAST NOTIFICATION */}
+      {toast && (
+        <div className={`fixed bottom-6 right-6 z-[100] flex items-center gap-3 px-4 py-3 rounded-lg shadow-2xl animate-in slide-in-from-bottom-5 ${toast.tipo === 'sucesso' ? 'bg-green-900/90 border border-green-500 text-green-100' : 'bg-red-900/90 border border-red-500 text-red-100'}`}>
+          {toast.tipo === 'sucesso' ? <CheckCircle2 size={20} className="text-green-400"/> : <AlertTriangle size={20} className="text-red-400"/>}
+          <p className="text-sm font-medium">{toast.msg}</p>
+        </div>
+      )}
+
       {/* CABEÇALHO */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
         <div>
@@ -138,18 +200,26 @@ export default function CrewDashboard() {
         </div>
       </div>
 
-      {/* FILTROS */}
+      {/* BARRA DE BUSCA E FILTROS */}
       <div className="flex flex-col md:flex-row gap-4 mb-6">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
-          <input type="text" placeholder="Buscar por nome ou especialidade..." className="w-full bg-[#121212] border border-[#222] rounded-lg py-2.5 pl-10 pr-4 text-sm text-gray-200 focus:outline-none focus:border-green-500" value={busca} onChange={(e) => setBusca(e.target.value)} />
+          <input type="text" placeholder="Buscar por nome..." className="w-full bg-[#121212] border border-[#222] rounded-lg py-2.5 pl-10 pr-4 text-sm text-gray-200 focus:outline-none focus:border-green-500" value={busca} onChange={(e) => setBusca(e.target.value)} />
         </div>
+        
+        {/* NOVO FILTRO DE ESPECIALIDADE */}
+        <select className="bg-[#121212] border border-[#222] text-gray-300 text-sm rounded-lg py-2.5 px-4 focus:outline-none focus:border-green-500 cursor-pointer" value={filtroEspecialidade} onChange={(e) => setFiltroEspecialidade(e.target.value)}>
+          <option value="todas">Todas as Especialidades</option>
+          {ESPECIALIDADES.map(esp => <option key={esp} value={esp}>{esp}</option>)}
+        </select>
+
         <select className="bg-[#121212] border border-[#222] text-gray-300 text-sm rounded-lg py-2.5 px-4 focus:outline-none focus:border-green-500 cursor-pointer" value={filtroStatus} onChange={(e) => setFiltroStatus(e.target.value)}>
           <option value="todos">Todos os Status</option>
           <option value="disponivel">Apenas Disponíveis</option>
           <option value="em_job">Em Job Agora</option>
           <option value="indisponivel">Indisponíveis</option>
         </select>
+        
         <button onClick={() => setModalFiltros(true)} className="bg-[#121212] border border-[#222] hover:bg-[#1a1a1a] px-4 py-2.5 rounded-lg text-sm text-gray-300 flex items-center gap-2">
           <Filter size={16} /> Mais Filtros
         </button>
@@ -201,7 +271,7 @@ export default function CrewDashboard() {
                           <div className="fixed inset-0 z-10" onClick={() => setMenuAberto(null)}></div>
                           <div className="absolute right-6 top-12 w-40 bg-[#121212] border border-[#333] rounded-lg shadow-2xl z-20 py-1 overflow-hidden animate-in fade-in slide-in-from-top-2">
                             <button onClick={() => setMenuAberto(null)} className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-[#1a1a1a] hover:text-white flex items-center gap-2"><User size={14}/> Ver Perfil</button>
-                            <button onClick={() => setMenuAberto(null)} className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-[#1a1a1a] hover:text-white flex items-center gap-2"><Edit size={14}/> Editar</button>
+                            <button onClick={() => { setMenuAberto(null); setModalAvaliacao(freela); setNovaNota(freela.avaliacao); }} className="w-full text-left px-4 py-2 text-sm text-yellow-500 hover:bg-[#1a1a1a] flex items-center gap-2"><Star size={14}/> Avaliar</button>
                             <div className="h-px bg-[#222] my-1"></div>
                             <button onClick={() => { setMenuAberto(null); setModalDelete(freela); }} className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-red-500/10 flex items-center gap-2"><Trash2 size={14}/> Excluir</button>
                           </div>
@@ -218,9 +288,94 @@ export default function CrewDashboard() {
         </div>
       </div>
 
-      {/* ================= MODAIS LUXUOSOS ================= */}
+      {/* ================= MODAIS ================= */}
 
-      {/* 1. Modal de Filtros Avançados */}
+      {/* Modal de Avaliação */}
+      {modalAvaliacao && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-[#121212] border border-[#222] rounded-2xl w-full max-w-sm shadow-2xl p-6 text-center">
+            <h3 className="text-lg font-bold text-white mb-2">Avaliar {modalAvaliacao.nome}</h3>
+            <p className="text-sm text-gray-400 mb-6">Qual a nota para o desempenho deste profissional?</p>
+            <div className="flex justify-center gap-2 mb-6">
+              {[1, 2, 3, 4, 5].map((nota) => (
+                <button key={nota} onClick={() => setNovaNota(nota)} className="focus:outline-none transition-transform hover:scale-110">
+                  <Star size={32} className={`${nota <= novaNota ? 'text-yellow-500 fill-yellow-500' : 'text-gray-600'}`} />
+                </button>
+              ))}
+            </div>
+            <div className="flex gap-3">
+              <button onClick={() => setModalAvaliacao(null)} className="flex-1 py-2.5 rounded-lg border border-[#333] text-gray-300 hover:bg-[#1a1a1a]">Cancelar</button>
+              <button onClick={handleAvaliar} className="flex-1 py-2.5 rounded-lg bg-yellow-600 hover:bg-yellow-500 text-white font-medium">Salvar Nota</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Cadastro */}
+      {modalCadastro && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-[#121212] border border-[#222] rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
+            <div className="flex justify-between items-center p-5 border-b border-[#222]">
+              <h3 className="text-lg font-bold text-white flex items-center gap-2"><UserPlus size={18} className="text-green-500"/> Novo Freelancer</h3>
+              <button onClick={() => setModalCadastro(false)} className="text-gray-500 hover:text-white"><X size={20} /></button>
+            </div>
+            <form onSubmit={handleCadastrar} className="p-5 space-y-4">
+              <div><label className="block text-xs text-gray-400 mb-1">Nome Completo</label><input required type="text" value={novoFreela.nome} onChange={e => setNovoFreela({...novoFreela, nome: e.target.value})} className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg p-2.5 text-sm text-white focus:border-green-500 focus:outline-none" /></div>
+              
+              {/* SELECT DE ESPECIALIDADE */}
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">Especialidade</label>
+                <select required value={novoFreela.especialidade} onChange={e => setNovoFreela({...novoFreela, especialidade: e.target.value})} className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg p-2.5 text-sm text-white focus:border-green-500 focus:outline-none cursor-pointer">
+                  {ESPECIALIDADES.map(esp => <option key={esp} value={esp}>{esp}</option>)}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                {/* INPUT COM MÁSCARA */}
+                <div><label className="block text-xs text-gray-400 mb-1">WhatsApp</label><input required type="text" placeholder="(11) 99999-9999" value={novoFreela.telefone} onChange={handleTelefoneChange} maxLength={15} className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg p-2.5 text-sm text-white focus:border-green-500 focus:outline-none" /></div>
+                <div><label className="block text-xs text-gray-400 mb-1">Diária Base (R$)</label><input required type="number" placeholder="350" value={novoFreela.diaria} onChange={e => setNovoFreela({...novoFreela, diaria: e.target.value})} className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg p-2.5 text-sm text-white focus:border-green-500 focus:outline-none" /></div>
+              </div>
+              <div className="pt-4 flex justify-end gap-3">
+                <button type="button" onClick={() => setModalCadastro(false)} className="px-4 py-2 text-sm text-gray-400 hover:text-white">Cancelar</button>
+                <button type="submit" className="bg-green-600 hover:bg-green-500 text-white px-6 py-2 rounded-lg text-sm font-medium">Salvar na Base</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Alterar Status */}
+      {modalStatus && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-[#121212] border border-[#222] rounded-2xl w-full max-w-sm shadow-2xl p-6 text-center">
+            <h3 className="text-lg font-bold text-white mb-2">Alterar Status</h3>
+            <p className="text-sm text-gray-400 mb-6">Como está a disponibilidade de <strong className="text-white">{modalStatus.nome}</strong>?</p>
+            <div className="space-y-3">
+              <button onClick={() => handleMudarStatus(modalStatus.id, 'disponivel')} className="w-full py-3 rounded-lg border border-green-500/30 bg-green-500/10 text-green-500 font-medium hover:bg-green-500/20 transition-colors">Disponível</button>
+              <button onClick={() => handleMudarStatus(modalStatus.id, 'em_job')} className="w-full py-3 rounded-lg border border-yellow-500/30 bg-yellow-500/10 text-yellow-500 font-medium hover:bg-yellow-500/20 transition-colors">Em Job Agora</button>
+              <button onClick={() => handleMudarStatus(modalStatus.id, 'indisponivel')} className="w-full py-3 rounded-lg border border-red-500/30 bg-red-500/10 text-red-500 font-medium hover:bg-red-500/20 transition-colors">Indisponível</button>
+            </div>
+            <button onClick={() => setModalStatus(null)} className="mt-6 text-sm text-gray-500 hover:text-white">Cancelar</button>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Exclusão */}
+      {modalDelete && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-[#121212] border border-[#222] rounded-2xl w-full max-w-sm shadow-2xl p-6 text-center">
+            <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-500/20"><AlertTriangle size={32} className="text-red-500" /></div>
+            <h3 className="text-lg font-bold text-white mb-2">Excluir Freelancer?</h3>
+            <p className="text-sm text-gray-400 mb-6">Tem certeza que deseja remover <strong className="text-white">{modalDelete.nome}</strong> da sua base?</p>
+            <div className="flex gap-3">
+              <button onClick={() => setModalDelete(null)} className="flex-1 py-2.5 rounded-lg border border-[#333] text-gray-300 hover:bg-[#1a1a1a]">Cancelar</button>
+              <button onClick={handleDelete} className="flex-1 py-2.5 rounded-lg bg-red-600 hover:bg-red-500 text-white font-medium">Sim, Excluir</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Filtros Avançados */}
       {modalFiltros && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-[#121212] border border-[#222] rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
@@ -245,64 +400,7 @@ export default function CrewDashboard() {
         </div>
       )}
 
-      {/* 2. Modal de Cadastro Completo */}
-      {modalCadastro && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-[#121212] border border-[#222] rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
-            <div className="flex justify-between items-center p-5 border-b border-[#222]">
-              <h3 className="text-lg font-bold text-white flex items-center gap-2"><UserPlus size={18} className="text-green-500"/> Novo Freelancer</h3>
-              <button onClick={() => setModalCadastro(false)} className="text-gray-500 hover:text-white"><X size={20} /></button>
-            </div>
-            <form onSubmit={handleCadastrar} className="p-5 space-y-4">
-              <div><label className="block text-xs text-gray-400 mb-1">Nome Completo</label><input required type="text" value={novoFreela.nome} onChange={e => setNovoFreela({...novoFreela, nome: e.target.value})} className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg p-2.5 text-sm text-white focus:border-green-500 focus:outline-none" /></div>
-              <div><label className="block text-xs text-gray-400 mb-1">Especialidade</label><input required type="text" placeholder="Ex: Técnico de Áudio" value={novoFreela.especialidade} onChange={e => setNovoFreela({...novoFreela, especialidade: e.target.value})} className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg p-2.5 text-sm text-white focus:border-green-500 focus:outline-none" /></div>
-              <div className="grid grid-cols-2 gap-4">
-                <div><label className="block text-xs text-gray-400 mb-1">WhatsApp</label><input required type="text" placeholder="5511999999999" value={novoFreela.telefone} onChange={e => setNovoFreela({...novoFreela, telefone: e.target.value})} className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg p-2.5 text-sm text-white focus:border-green-500 focus:outline-none" /></div>
-                <div><label className="block text-xs text-gray-400 mb-1">Diária Base (R$)</label><input required type="number" placeholder="350" value={novoFreela.diaria} onChange={e => setNovoFreela({...novoFreela, diaria: e.target.value})} className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg p-2.5 text-sm text-white focus:border-green-500 focus:outline-none" /></div>
-              </div>
-              <div className="pt-4 flex justify-end gap-3">
-                <button type="button" onClick={() => setModalCadastro(false)} className="px-4 py-2 text-sm text-gray-400 hover:text-white">Cancelar</button>
-                <button type="submit" className="bg-green-600 hover:bg-green-500 text-white px-6 py-2 rounded-lg text-sm font-medium">Salvar na Base</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* 3. Modal de Alterar Status */}
-      {modalStatus && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-[#121212] border border-[#222] rounded-2xl w-full max-w-sm shadow-2xl p-6 text-center">
-            <h3 className="text-lg font-bold text-white mb-2">Alterar Status</h3>
-            <p className="text-sm text-gray-400 mb-6">Como está a disponibilidade de <strong className="text-white">{modalStatus.nome}</strong>?</p>
-            <div className="space-y-3">
-              <button onClick={() => handleMudarStatus(modalStatus.id, 'disponivel')} className="w-full py-3 rounded-lg border border-green-500/30 bg-green-500/10 text-green-500 font-medium hover:bg-green-500/20 transition-colors">Disponível</button>
-              <button onClick={() => handleMudarStatus(modalStatus.id, 'em_job')} className="w-full py-3 rounded-lg border border-yellow-500/30 bg-yellow-500/10 text-yellow-500 font-medium hover:bg-yellow-500/20 transition-colors">Em Job Agora</button>
-              <button onClick={() => handleMudarStatus(modalStatus.id, 'indisponivel')} className="w-full py-3 rounded-lg border border-red-500/30 bg-red-500/10 text-red-500 font-medium hover:bg-red-500/20 transition-colors">Indisponível</button>
-            </div>
-            <button onClick={() => setModalStatus(null)} className="mt-6 text-sm text-gray-500 hover:text-white">Cancelar</button>
-          </div>
-        </div>
-      )}
-
-      {/* 4. Modal de Confirmação de Exclusão */}
-      {modalDelete && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-[#121212] border border-[#222] rounded-2xl w-full max-w-sm shadow-2xl p-6 text-center">
-            <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-500/20">
-              <AlertTriangle size={32} className="text-red-500" />
-            </div>
-            <h3 className="text-lg font-bold text-white mb-2">Excluir Freelancer?</h3>
-            <p className="text-sm text-gray-400 mb-6">Tem certeza que deseja remover <strong className="text-white">{modalDelete.nome}</strong> da sua base? Esta ação não pode ser desfeita.</p>
-            <div className="flex gap-3">
-              <button onClick={() => setModalDelete(null)} className="flex-1 py-2.5 rounded-lg border border-[#333] text-gray-300 hover:bg-[#1a1a1a]">Cancelar</button>
-              <button onClick={handleDelete} className="flex-1 py-2.5 rounded-lg bg-red-600 hover:bg-red-500 text-white font-medium">Sim, Excluir</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 5. Modal de Pré-visualização WhatsApp */}
+      {/* Modal WhatsApp */}
       {modalWhatsapp && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-[#121212] border border-[#222] rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
@@ -312,18 +410,11 @@ export default function CrewDashboard() {
             </div>
             <div className="p-5">
               <label className="block text-sm text-gray-400 mb-2">Edite a mensagem antes de enviar para {modalWhatsapp.nome}:</label>
-              <textarea 
-                rows={5} 
-                value={msgWhatsapp} 
-                onChange={(e) => setMsgWhatsapp(e.target.value)}
-                className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg p-3 text-sm text-gray-200 focus:border-[#25D366] focus:outline-none resize-none"
-              />
+              <textarea rows={5} value={msgWhatsapp} onChange={(e) => setMsgWhatsapp(e.target.value)} className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg p-3 text-sm text-gray-200 focus:border-[#25D366] focus:outline-none resize-none" />
             </div>
             <div className="p-5 border-t border-[#222] flex justify-end gap-3">
               <button onClick={() => setModalWhatsapp(null)} className="px-4 py-2 text-sm text-gray-400 hover:text-white">Cancelar</button>
-              <button onClick={enviarWhatsapp} className="bg-[#25D366] hover:bg-[#20bd5a] text-white px-6 py-2 rounded-lg text-sm font-medium flex items-center gap-2">
-                <Send size={16} /> Abrir WhatsApp
-              </button>
+              <button onClick={enviarWhatsapp} className="bg-[#25D366] hover:bg-[#20bd5a] text-white px-6 py-2 rounded-lg text-sm font-medium flex items-center gap-2"><Send size={16} /> Abrir WhatsApp</button>
             </div>
           </div>
         </div>
