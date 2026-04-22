@@ -6,7 +6,7 @@ import {
   ChevronRight, MoreHorizontal, X, AlertTriangle, Trash2, 
   CheckCircle2, Search, UserPlus, Edit, ChevronLeft
 } from "lucide-react";
-import { supabase } from "../lib/supabase";
+import { supabase } from "../../lib/supabase";
 
 const ESPECIALIDADES =[
   "Técnico de Áudio", "Iluminador(a)", "Técnico de Vídeo", 
