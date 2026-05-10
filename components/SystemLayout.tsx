@@ -87,17 +87,12 @@ export default function SystemLayout({ children }: { children: React.ReactNode }
         <nav className="flex-1 px-3 py-2 space-y-1 overflow-y-auto overflow-x-hidden">
           {menuItems.map((item) => {
             const isActive = pathname === item.path;
+            const cls = isActive
+              ? "bg-green-500/10 text-green-500 border border-green-500/20"
+              : "text-gray-400 hover:text-gray-100 hover:bg-[#1a1a1a]";
             return (
-              
-                key={item.path}
-                href={item.path}
-                title={isCollapsed ? item.name : ""}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium text-sm transition-colors ${
-                  isActive
-                    ? "bg-green-500/10 text-green-500 border border-green-500/20"
-                    : "text-gray-400 hover:text-gray-100 hover:bg-[#1a1a1a]"
-                }`}
-              >
+              <a key={item.path} href={item.path} title={isCollapsed ? item.name : ""}
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium text-sm transition-colors ${cls}`}>
                 <item.icon size={20} className="min-w-[20px]" />
                 {!isCollapsed && <span className="truncate">{item.name}</span>}
               </a>
@@ -155,10 +150,8 @@ export default function SystemLayout({ children }: { children: React.ReactNode }
                     <p className="text-sm font-medium text-white">{profile?.nome ?? "Usuário"}</p>
                     <p className="text-xs text-gray-500 capitalize">{profile?.role}</p>
                   </div>
-                  
-                    href="/configuracoes"
-                    className="flex items-center gap-2 px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-[#1a1a1a] transition-colors"
-                  >
+                  <a href="/configuracoes"
+                    className="flex items-center gap-2 px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-[#1a1a1a] transition-colors">
                     <Settings size={16} /> Configurações
                   </a>
                   <div className="h-px bg-[#222] my-2"></div>
