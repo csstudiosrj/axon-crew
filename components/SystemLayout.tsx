@@ -3,17 +3,16 @@
 import React, { useState, useEffect } from "react";
 import {
   Users, CalendarDays, DollarSign, ClipboardList,
-  Settings, LogOut, ChevronLeft, ChevronRight, Bell, User
+  Settings, LogOut, ChevronLeft, ChevronRight, Bell
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 
 export default function SystemLayout({ children }: { children: React.ReactNode }) {
-  const [isCollapsed, setIsCollapsed]     = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const { profile, company, isLoading, signOut } = useAuth();
   const pathname = usePathname();
-  const router   = useRouter();
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -26,17 +25,17 @@ export default function SystemLayout({ children }: { children: React.ReactNode }
   }, []);
 
   const menuItems = [
-    { name: "Base de Freelas",   icon: Users,        path: "/" },
-    { name: "Agenda & Jobs",     icon: CalendarDays, path: "/agenda" },
-    { name: "Financeiro & PIX",  icon: DollarSign,   path: "/financeiro" },
-    { name: "Call Sheets",       icon: ClipboardList, path: "/callsheets" },
-    { name: "Configurações",     icon: Settings,     path: "/configuracoes" },
+    { name: "Base de Freelas",  icon: Users,         path: "/" },
+    { name: "Agenda & Jobs",    icon: CalendarDays,  path: "/agenda" },
+    { name: "Financeiro & PIX", icon: DollarSign,    path: "/financeiro" },
+    { name: "Call Sheets",      icon: ClipboardList, path: "/callsheets" },
+    { name: "Configurações",    icon: Settings,      path: "/configuracoes" },
   ];
 
-  // Não renderiza o layout nas páginas públicas
-  if (pathname === "/login") return <>{children}</>;
+  if (pathname === "/login") {
+    return <>{children}</>;
+  }
 
-  // Tela de loading enquanto verifica sessão
   if (isLoading) {
     return (
       <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
@@ -51,15 +50,17 @@ export default function SystemLayout({ children }: { children: React.ReactNode }
   }
 
   const iniciais = profile?.nome
-    ? profile.nome.split(" ").map(n => n[0]).slice(0, 2).join("").toUpperCase()
+    ? profile.nome.split(" ").map((n: string) => n[0]).slice(0, 2).join("").toUpperCase()
     : "??";
 
   return (
     <div className="flex h-screen w-full bg-[#0a0a0a] text-gray-200 overflow-hidden font-sans">
 
-      {/* SIDEBAR */}
-      <aside className={`relative flex flex-col bg-[#121212] border-r border-[#222] transition-all duration-300 ease-in-out z-20 ${isCollapsed ? "w-20" : "w-64"}`}>
-
+      <aside
+        className={`relative flex flex-col bg-[#121212] border-r border-[#222] transition-all duration-300 ease-in-out z-20 ${
+          isCollapsed ? "w-20" : "w-64"
+        }`}
+      >
         <button
           onClick={() => setIsCollapsed(!isCollapsed)}
           className="absolute -right-3 top-6 bg-[#1a1a1a] border border-[#333] text-gray-400 hover:text-white rounded-full p-1 z-30 transition-colors"
@@ -67,7 +68,6 @@ export default function SystemLayout({ children }: { children: React.ReactNode }
           {isCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
         </button>
 
-        {/* Logo */}
         <div className={`p-6 flex items-center ${isCollapsed ? "justify-center px-0" : ""}`}>
           <h1 className="text-xl font-bold flex items-center gap-2 text-white overflow-hidden whitespace-nowrap">
             <span className="text-green-500">ARXUM</span>
@@ -75,7 +75,6 @@ export default function SystemLayout({ children }: { children: React.ReactNode }
           </h1>
         </div>
 
-        {/* Empresa */}
         {!isCollapsed && company && (
           <div className="px-4 pb-4">
             <div className="bg-[#0a0a0a] border border-[#222] rounded-lg px-3 py-2">
@@ -85,7 +84,6 @@ export default function SystemLayout({ children }: { children: React.ReactNode }
           </div>
         )}
 
-        {/* Nav */}
         <nav className="flex-1 px-3 py-2 space-y-1 overflow-y-auto overflow-x-hidden">
           {menuItems.map((item) => {
             const isActive = pathname === item.path;
@@ -94,7 +92,7 @@ export default function SystemLayout({ children }: { children: React.ReactNode }
                 key={item.path}
                 href={item.path}
                 title={isCollapsed ? item.name : ""}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium text-sm transition-colors group ${
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium text-sm transition-colors ${
                   isActive
                     ? "bg-green-500/10 text-green-500 border border-green-500/20"
                     : "text-gray-400 hover:text-gray-100 hover:bg-[#1a1a1a]"
@@ -107,7 +105,6 @@ export default function SystemLayout({ children }: { children: React.ReactNode }
           })}
         </nav>
 
-        {/* Logout na sidebar */}
         <div className="p-3 border-t border-[#222]">
           <button
             onClick={signOut}
@@ -120,16 +117,11 @@ export default function SystemLayout({ children }: { children: React.ReactNode }
         </div>
       </aside>
 
-      {/* ÁREA PRINCIPAL */}
       <div className="flex-1 flex flex-col min-w-0">
-
-        {/* HEADER */}
         <header className="h-16 bg-[#121212] border-b border-[#222] flex items-center justify-between px-8 z-10">
-          <div className="flex items-center">
-            <p className="text-sm text-gray-500">
-              {menuItems.find(m => m.path === pathname)?.name ?? ""}
-            </p>
-          </div>
+          <p className="text-sm text-gray-500">
+            {menuItems.find((m) => m.path === pathname)?.name ?? ""}
+          </p>
 
           <div className="flex items-center gap-4">
             <button className="text-gray-400 hover:text-white transition-colors relative">
