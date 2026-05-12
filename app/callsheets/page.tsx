@@ -156,9 +156,9 @@ export default function CallSheetsPage() {
     if (!tel) return;
     const link = `${getBaseUrl()}/roteiro/${callSheetId}`;
     const msg  = encodeURIComponent(
-      `Olá ${freela.nome.split(" ")[0]}!\n\n` +
+      `OlÃ¡ ${freela.nome.split(" ")[0]}!\n\n` +
       `Segue o roteiro do evento *${eventoSelecionado.titulo}*.\n\n` +
-      `Acesse o link abaixo para confirmar sua presença:\n${link}\n\n` +
+      `Acesse o link abaixo para confirmar sua presenÃ§a:\n${link}\n\n` +
       `ARXUM Crew`
     );
     window.open(`https://wa.me/55${tel}?text=${msg}`, "_blank");
@@ -213,7 +213,7 @@ export default function CallSheetsPage() {
                     <div className="flex justify-between items-start">
                       <div>
                         <p className="text-sm font-semibold text-white">{evento.titulo}</p>
-                        <p className="text-xs text-gray-500 mt-0.5">{formatarData(evento.data)} · {evento.local}</p>
+                        <p className="text-xs text-gray-500 mt-0.5">{formatarData(evento.data)} Â· {evento.local}</p>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
                         {cs?.publicado ? (
@@ -248,7 +248,7 @@ export default function CallSheetsPage() {
                 <div className="flex justify-between items-start">
                   <div>
                     <h3 className="text-base font-bold text-white">{eventoSelecionado.titulo}</h3>
-                    <p className="text-xs text-gray-500 mt-0.5">{formatarData(eventoSelecionado.data)} · {eventoSelecionado.local}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">{formatarData(eventoSelecionado.data)} Â· {eventoSelecionado.local}</p>
                   </div>
                   <div className="flex gap-2">
                     {publicado && freelancers.length > 0 && (
@@ -283,7 +283,7 @@ export default function CallSheetsPage() {
                       {(eventoAberto === slot.id || eventoAberto === null) && (
                         <div className="space-y-2">
                           {slot.freelancers.length === 0 ? (
-                            <p className="text-xs text-gray-600 pl-2">Nenhum profissional escalado nesta função.</p>
+                            <p className="text-xs text-gray-600 pl-2">Nenhum profissional escalado nesta funÃ§Ã£o.</p>
                           ) : (
                             slot.freelancers.map((f) => (
                               <div key={f.freelancerId}
@@ -296,7 +296,7 @@ export default function CallSheetsPage() {
                                   <p className="text-xs text-gray-600 truncate">{f.especialidade}</p>
                                   {f.confirmado && f.confirmadoEm && (
                                     <p className="text-[10px] text-green-600 mt-0.5">
-                                      Ciente às {new Date(f.confirmadoEm).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                                      Ciente Ã s {new Date(f.confirmadoEm).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
                                     </p>
                                   )}
                                 </div>
@@ -337,10 +337,10 @@ export default function CallSheetsPage() {
                 </div>
               )}
 
-              {/* Link público */}
+              {/* Link pÃºblico */}
               {callSheetId && publicado && (
                 <div className="px-5 pb-5">
-                  <p className="text-xs text-gray-600 mb-1.5">Link público do roteiro:</p>
+                  <p className="text-xs text-gray-600 mb-1.5">Link pÃºblico do roteiro:</p>
                   <div className="flex items-center gap-2 bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-3 py-2">
                     <p className="text-xs text-gray-500 flex-1 truncate font-mono">{getBaseUrl()}/roteiro/{callSheetId}</p>
                     <button onClick={() => { navigator.clipboard.writeText(`${getBaseUrl()}/roteiro/${callSheetId}`); mostrarToast("Link copiado!", "sucesso"); }}
