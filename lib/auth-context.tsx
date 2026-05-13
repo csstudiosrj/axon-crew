@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useEffect, useState, useRef } from "react";
 import { supabase } from "./supabase";
 import { useRouter, usePathname } from "next/navigation";
 
@@ -34,38 +34,13 @@ const AuthContext = createContext<AuthContextType>({
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [userId, setUserId]   = useState<string | null>(null);
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [company, setCompany] = useState<Company | null>(null);
+  const [userId, setUserId]     = useState<string | null>(null);
+  const [profile, setProfile]   = useState<Profile | null>(null);
+  const [company, setCompany]   = useState<Company | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const initialized = useRef(false);
   const router   = useRouter();
   const pathname = usePathname();
-
-  useEffect(() => {
-    const init = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        await loadProfile(session.user.id);
-      } else {
-        setIsLoading(false);
-        if (pathname !== "/login") router.push("/login");
-      }
-    };
-    init();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        if (session?.user) {
-          await loadProfile(session.user.id);
-        } else {
-          setUserId(null); setProfile(null); setCompany(null);
-          setIsLoading(false);
-          router.push("/login");
-        }
-      }
-    );
-    return () => subscription.unsubscribe();
-  }, []);
 
   const loadProfile = async (uid: string) => {
     setUserId(uid);
@@ -80,8 +55,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsLoading(false);
   };
 
+  useEffect(() => {
+    if (initialized.current) return;
+    initialized.current = true;
+
+    const init = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        await loadProfile(session.user.id);
+      } else {
+        setIsLoading(false);
+        if (pathname !== "/login") router.push("/login");
+      }
+    };
+
+    init();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (event === "SIGNED_OUT") {
+          setUserId(null);
+          setProfile(null);
+          setCompany(null);
+          setIsLoading(false);
+          router.push("/login");
+        }
+        // SIGNED_IN só carrega se ainda não tiver profile
+        if (event === "SIGNED_IN" && session?.user && !profile) {
+          await loadProfile(session.user.id);
+        }
+      }
+    );
+
+    return () => subscription.unsubscribe();
+  }, []);
+
   const signOut = async () => {
     await supabase.auth.signOut();
+    setUserId(null);
+    setProfile(null);
+    setCompany(null);
     router.push("/login");
   };
 
