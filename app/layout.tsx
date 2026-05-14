@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { AuthProvider } from "@/lib/auth-context";
 import SystemLayout from "@/components/SystemLayout";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
@@ -16,11 +15,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="pt-BR" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
       <body className="h-full bg-[#0a0a0a] text-gray-200 overflow-hidden">
-        <AuthProvider>
-          <SystemLayout>
-            {children}
-          </SystemLayout>
-        </AuthProvider>
+        <SystemLayout>
+          {children}
+        </SystemLayout>
       </body>
     </html>
   );
