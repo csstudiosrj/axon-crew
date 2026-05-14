@@ -9,10 +9,6 @@ import {
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../lib/auth-context";
 
-const ESPECIALIDADES = [
-  "Técnico de Áudio", "Iluminador(a)", "Técnico de Vídeo",
-  "Roadie", "Produtor(a)", "Cenógrafo(a)", "Carregador", "Recepcionista"
-];
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; border: string; dot: string }> = {
   disponivel:   { label: "Disponível",   color: "text-green-500",  bg: "bg-green-500/10",  border: "border-green-500/20",  dot: "bg-green-500" },
@@ -52,11 +48,11 @@ const telefoneLimpo = (t: string) => t.replace(/\D/g, "");
 const telefoneDisplay = (t: string) => formatarTelefone(t);
 
 const FREELA_VAZIO: NovoFreela = {
-  nome: "", especialidade: ESPECIALIDADES[0], telefone: "", diaria: "", chave_pix: ""
+  nome: "", especialidade: especialidades[0] ?? "", telefone: "", diaria: "", chave_pix: ""
 };
 
 export default function CrewDashboard() {
-  const { companyId } = useAuth();
+  const { companyId, especialidades } = useAuth();
 
   const [freelancers, setFreelancers] = useState<Freelancer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -259,7 +255,7 @@ export default function CrewDashboard() {
           value={filtroEspecialidade} onChange={(e) => setFiltroEspecialidade(e.target.value)}
         >
           <option value="todas">Todas as Especialidades</option>
-          {ESPECIALIDADES.map((esp) => <option key={esp} value={esp}>{esp}</option>)}
+          {especialidades.map((esp) => <option key={esp} value={esp}>{esp}</option>)}
         </select>
         <select
           className="bg-[#121212] border border-[#222] text-gray-300 text-sm rounded-lg py-2.5 px-4 focus:outline-none focus:border-green-500 cursor-pointer"
@@ -389,7 +385,7 @@ export default function CrewDashboard() {
                 <label className="block text-xs text-gray-400 mb-1">Especialidade *</label>
                 <select required value={novoFreela.especialidade} onChange={(e) => setNovoFreela({ ...novoFreela, especialidade: e.target.value })}
                   className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg p-2.5 text-sm text-white focus:border-green-500 focus:outline-none cursor-pointer">
-                  {ESPECIALIDADES.map((esp) => <option key={esp} value={esp}>{esp}</option>)}
+                  {especialidades.map((esp) => <option key={esp} value={esp}>{esp}</option>)}
                 </select>
               </div>
               <div className="grid grid-cols-2 gap-4">

@@ -9,13 +9,9 @@ import {
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../lib/auth-context";
 
-const ESPECIALIDADES = [
-  "Técnico de Áudio", "Iluminador(a)", "Técnico de Vídeo",
-  "Roadie", "Produtor(a)", "Cenógrafo(a)", "Carregador", "Recepcionista"
-];
 
 export default function AgendaPage() {
-  const { companyId } = useAuth();
+  const { companyId, especialidades } = useAuth();
 
   const [eventos, setEventos] = useState<any[]>([]);
   const [todosFreelancers, setTodosFreelancers] = useState<any[]>([]);
@@ -34,7 +30,7 @@ export default function AgendaPage() {
   const [modalDelete, setModalDelete] = useState<string | null>(null);
 
   const [novoEvento, setNovoEvento] = useState({ titulo: '', data: '', horario_inicio: '', local: '' });
-  const [necessidades, setNecessidades] = useState([{ id: Date.now().toString(), especialidade: ESPECIALIDADES[0], quantidade: 1, cacheBase: '' }]);
+  const [necessidades, setNecessidades] = useState([{ id: Date.now().toString(), especialidade: especialidades[0] ?? "", quantidade: 1, cacheBase: '' }]);
   const [slotsEditando, setSlotsEditando] = useState<any[]>([]);
   const [buscaFreela, setBuscaFreela] = useState("");
 
@@ -148,7 +144,7 @@ export default function AgendaPage() {
       mostrarToast("Evento criado com sucesso!", "sucesso");
       setModalNovoEvento(false);
       setNovoEvento({ titulo: '', data: '', horario_inicio: '', local: '' });
-      setNecessidades([{ id: Date.now().toString(), especialidade: ESPECIALIDADES[0], quantidade: 1, cacheBase: '' }]);
+      setNecessidades([{ id: Date.now().toString(), especialidade: especialidades[0] ?? "", quantidade: 1, cacheBase: '' }]);
       carregarTudo();
     }
   };
@@ -468,7 +464,7 @@ export default function AgendaPage() {
                 <div>
                   <div className="flex justify-between items-center mb-3 border-b border-[#222] pb-2">
                     <h4 className="text-sm font-medium text-white">2. Necessidade de Staff (Vagas)</h4>
-                    <button type="button" onClick={() => setNecessidades([...necessidades, { id: Date.now().toString(), especialidade: ESPECIALIDADES[0], quantidade: 1, cacheBase: '' }])}
+                    <button type="button" onClick={() => setNecessidades([...necessidades, { id: Date.now().toString(), especialidade: especialidades[0] ?? "", quantidade: 1, cacheBase: '' }])}
                       className="text-xs text-green-500 hover:text-green-400 font-medium flex items-center gap-1">
                       <Plus size={14} /> Adicionar Função
                     </button>
@@ -480,7 +476,7 @@ export default function AgendaPage() {
                           <label className="block text-xs text-gray-500 mb-1">Especialidade</label>
                           <select value={nec.especialidade} onChange={e => setNecessidades(necessidades.map(n => n.id === nec.id ? { ...n, especialidade: e.target.value } : n))}
                             className="w-full bg-[#121212] border border-[#333] rounded-md p-2 text-sm text-white focus:border-green-500 focus:outline-none cursor-pointer">
-                            {ESPECIALIDADES.map(esp => <option key={esp} value={esp}>{esp}</option>)}
+                            {especialidades.map((esp: string) => <option key={esp} value={esp}>{esp}</option>)}
                           </select>
                         </div>
                         <div className="w-24">
@@ -567,7 +563,7 @@ export default function AgendaPage() {
                 <div>
                   <div className="flex justify-between items-center mb-3 border-b border-[#222] pb-2">
                     <h4 className="text-sm font-medium text-white">Adicionar Novas Vagas</h4>
-                    <button type="button" onClick={() => setSlotsEditando([...slotsEditando, { id: Date.now().toString(), especialidade: ESPECIALIDADES[0], quantidade: 1, cacheBase: '' }])}
+                    <button type="button" onClick={() => setSlotsEditando([...slotsEditando, { id: Date.now().toString(), especialidade: especialidades[0] ?? "", quantidade: 1, cacheBase: '' }])}
                       className="text-xs text-green-500 hover:text-green-400 font-medium flex items-center gap-1">
                       <Plus size={14} /> Adicionar Função
                     </button>
@@ -582,7 +578,7 @@ export default function AgendaPage() {
                             <label className="block text-xs text-gray-500 mb-1">Especialidade</label>
                             <select value={s.especialidade} onChange={e => setSlotsEditando(slotsEditando.map(x => x.id === s.id ? { ...x, especialidade: e.target.value } : x))}
                               className="w-full bg-[#121212] border border-[#333] rounded-md p-2 text-sm text-white focus:border-green-500 focus:outline-none cursor-pointer">
-                              {ESPECIALIDADES.map(esp => <option key={esp} value={esp}>{esp}</option>)}
+                              {especialidades.map((esp: string) => <option key={esp} value={esp}>{esp}</option>)}
                             </select>
                           </div>
                           <div className="w-24">
