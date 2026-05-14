@@ -1,3 +1,4 @@
+```tsx
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
@@ -48,7 +49,7 @@ const telefoneLimpo = (t: string) => t.replace(/\D/g, "");
 const telefoneDisplay = (t: string) => formatarTelefone(t);
 
 const FREELA_VAZIO: NovoFreela = {
-  nome: "", especialidade: especialidades[0] ?? "", telefone: "", diaria: "", chave_pix: ""
+  nome: "", especialidade: "", telefone: "", diaria: "", chave_pix: ""
 };
 
 export default function CrewDashboard() {
