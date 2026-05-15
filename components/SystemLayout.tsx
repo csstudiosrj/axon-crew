@@ -25,60 +25,96 @@ export default function SystemLayout({ children }: { children: React.ReactNode }
     window.location.href = "/login";
   };
 
-  if (pathname === "/login" || pathname.startsWith("/cadastro")) return <>{children}</>;
+  // Páginas públicas — sem layout, sem restrição de altura
+  if (pathname === "/login" || pathname.startsWith("/cadastro")) {
+    return <>{children}</>;
+  }
 
+  // Sistema interno — layout fixo com sidebar
   return (
-    <div className="flex h-screen w-full bg-[#0a0a0a] text-gray-200 overflow-y-auto font-sans">
+    <div style={{ display: "flex", height: "100vh", width: "100%", overflow: "hidden", fontFamily: "sans-serif" }}>
 
-      <aside className={`relative flex flex-col bg-[#121212] border-r border-[#222] transition-all duration-300 ease-in-out z-20 ${isCollapsed ? "w-20" : "w-64"}`}>
-
-        <button onClick={() => setIsCollapsed(!isCollapsed)}
-          className="absolute -right-3 top-6 bg-[#1a1a1a] border border-[#333] text-gray-400 hover:text-white rounded-full p-1 z-30 transition-colors">
+      {/* SIDEBAR */}
+      <aside style={{
+        display: "flex", flexDirection: "column",
+        width: isCollapsed ? 80 : 256,
+        minWidth: isCollapsed ? 80 : 256,
+        background: "#121212",
+        borderRight: "1px solid #222",
+        transition: "width 0.3s ease",
+        position: "relative",
+        zIndex: 20,
+      }}>
+        <button onClick={() => setIsCollapsed(!isCollapsed)} style={{
+          position: "absolute", right: -12, top: 24,
+          background: "#1a1a1a", border: "1px solid #333",
+          borderRadius: "50%", width: 24, height: 24,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          cursor: "pointer", zIndex: 30, color: "#999",
+        }}>
           {isCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
         </button>
 
-        <div className={`p-6 flex items-center ${isCollapsed ? "justify-center px-0" : ""}`}>
-          <h1 className="text-xl font-bold flex items-center gap-2 text-white overflow-y-auto whitespace-nowrap">
-            <span className="text-green-500">ARXUM</span>
+        <div style={{ padding: "1.5rem", display: "flex", alignItems: "center", justifyContent: isCollapsed ? "center" : "flex-start" }}>
+          <h1 style={{ fontSize: "1.25rem", fontWeight: 700, color: "#fff", whiteSpace: "nowrap", overflow: "hidden", margin: 0 }}>
+            <span style={{ color: "#22c55e" }}>ARXUM</span>
             {!isCollapsed && " Crew"}
           </h1>
         </div>
 
-        <nav className="flex-1 px-3 py-2 space-y-1 overflow-y-auto overflow-x-hidden">
+        <nav style={{ flex: 1, padding: "0.5rem 0.75rem", display: "flex", flexDirection: "column", gap: 4, overflowY: "auto" }}>
           {menuItems.map((item) => {
             const isActive = pathname === item.path;
-            const cls = isActive
-              ? "bg-green-500/10 text-green-500 border border-green-500/20"
-              : "text-gray-400 hover:text-gray-100 hover:bg-[#1a1a1a]";
-            return <a key={item.path} href={item.path} title={isCollapsed ? item.name : ""}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium text-sm transition-colors ${cls}`}>
-              <item.icon size={20} className="min-w-[20px]" />
-              {!isCollapsed && <span className="truncate">{item.name}</span>}
-            </a>;
+            return (
+              <a key={item.path} href={item.path} title={isCollapsed ? item.name : ""} style={{
+                display: "flex", alignItems: "center", gap: 12,
+                padding: "0.625rem 0.75rem", borderRadius: "0.5rem",
+                fontSize: "0.875rem", fontWeight: 500,
+                textDecoration: "none",
+                background: isActive ? "rgba(34,197,94,0.1)" : "transparent",
+                color: isActive ? "#22c55e" : "#999",
+                border: isActive ? "1px solid rgba(34,197,94,0.2)" : "1px solid transparent",
+                transition: "all 0.15s",
+              }}>
+                <item.icon size={20} style={{ minWidth: 20 }} />
+                {!isCollapsed && <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.name}</span>}
+              </a>
+            );
           })}
         </nav>
 
-        <div className="p-3 border-t border-[#222]">
-          <button onClick={signOut} title={isCollapsed ? "Sair" : ""}
-            className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition-colors">
-            <LogOut size={20} className="min-w-[20px]" />
+        <div style={{ padding: "0.75rem", borderTop: "1px solid #222" }}>
+          <button onClick={signOut} title={isCollapsed ? "Sair" : ""} style={{
+            display: "flex", alignItems: "center", gap: 12,
+            width: "100%", padding: "0.625rem 0.75rem",
+            borderRadius: "0.5rem", fontSize: "0.875rem",
+            background: "none", border: "none", cursor: "pointer",
+            color: "#666", transition: "all 0.15s",
+          }}>
+            <LogOut size={20} style={{ minWidth: 20 }} />
             {!isCollapsed && <span>Sair do Sistema</span>}
           </button>
         </div>
       </aside>
 
-      <div className="flex-1 flex flex-col min-w-0">
-        <header className="h-16 bg-[#121212] border-b border-[#222] flex items-center justify-between px-8 z-10">
-          <p className="text-sm text-gray-500">
+      {/* CONTEÚDO */}
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0, overflow: "hidden" }}>
+        <header style={{
+          height: 64, minHeight: 64,
+          background: "#121212", borderBottom: "1px solid #222",
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          padding: "0 2rem", zIndex: 10,
+        }}>
+          <p style={{ fontSize: "0.875rem", color: "#666", margin: 0 }}>
             {menuItems.find((m) => m.path === pathname)?.name ?? ""}
           </p>
-          <button className="text-gray-400 hover:text-white transition-colors relative">
+          <button style={{ background: "none", border: "none", cursor: "pointer", color: "#999", position: "relative" }}>
             <Bell size={20} />
-            <span className="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full"></span>
+            <span style={{ position: "absolute", top: -2, right: -2, width: 8, height: 8, background: "#22c55e", borderRadius: "50%" }}></span>
           </button>
         </header>
 
-        <main className="flex-1 overflow-y-auto relative">
+        <main style={{ flex: 1, overflowY: "auto", position: "relative" }}>
           {children}
         </main>
       </div>
