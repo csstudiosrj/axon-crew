@@ -26,7 +26,7 @@ export default function SystemLayout({ children }: { children: React.ReactNode }
   };
 
   // Páginas públicas — sem layout, sem restrição de altura
-  if (pathname === "/login" || pathname.startsWith("/cadastro")) {
+  if (pathname === "/login" || pathname.startsWith("/cadastro") || pathname.startsWith("/roteiro")) {
     return <>{children}</>;
   }
 
