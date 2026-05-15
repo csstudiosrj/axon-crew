@@ -10,7 +10,7 @@ body {
   color: var(--foreground);
   margin: 0;
   padding: 0;
-  overflow: hidden; /* Trava a rolagem da janela inteira, quem rola é apenas a área de conteúdo */
+  
 }
 
 /* Barra de Rolagem Customizada (Padrão Luxo) */
