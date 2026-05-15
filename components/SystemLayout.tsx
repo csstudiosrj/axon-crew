@@ -28,7 +28,7 @@ export default function SystemLayout({ children }: { children: React.ReactNode }
   if (pathname === "/login" || pathname.startsWith("/cadastro")) return <>{children}</>;
 
   return (
-    <div className="flex h-screen w-full bg-[#0a0a0a] text-gray-200 overflow-hidden font-sans">
+    <div className="flex h-screen w-full bg-[#0a0a0a] text-gray-200 overflow-y-auto font-sans">
 
       <aside className={`relative flex flex-col bg-[#121212] border-r border-[#222] transition-all duration-300 ease-in-out z-20 ${isCollapsed ? "w-20" : "w-64"}`}>
 
@@ -38,7 +38,7 @@ export default function SystemLayout({ children }: { children: React.ReactNode }
         </button>
 
         <div className={`p-6 flex items-center ${isCollapsed ? "justify-center px-0" : ""}`}>
-          <h1 className="text-xl font-bold flex items-center gap-2 text-white overflow-hidden whitespace-nowrap">
+          <h1 className="text-xl font-bold flex items-center gap-2 text-white overflow-y-auto whitespace-nowrap">
             <span className="text-green-500">ARXUM</span>
             {!isCollapsed && " Crew"}
           </h1>
