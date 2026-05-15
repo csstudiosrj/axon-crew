@@ -3,9 +3,10 @@
 import React, { useState, useEffect } from "react";
 import {
   UserPlus, ChevronRight, ChevronLeft, CheckCircle2,
-  AlertCircle, Loader2, Camera, FileText
+  AlertCircle, Loader2
 } from "lucide-react";
 import { supabase } from "../../../lib/supabase";
+import { useParams } from "next/navigation";
 
 interface Company {
   id: string;
@@ -46,26 +47,28 @@ const formatarCPF = (v: string) => {
   return s;
 };
 
-export default async function CadastroPublicoPage({ params }: { params: Promise<{ slug: string }> }) {
-  const { slug } = await params;
-  const [company, setCompany]   = useState<Company | null>(null);
-  const [notFound, setNotFound] = useState(false);
-  const [step, setStep]         = useState(1);
-  const [form, setForm]         = useState<FormData>(FORM_VAZIO);
+export default function CadastroPublicoPage() {
+  const params = useParams();
+  const slug = typeof params.slug === "string" ? params.slug : Array.isArray(params.slug) ? params.slug[0] : "";
+
+  const [company, setCompany]     = useState<Company | null>(null);
+  const [notFound, setNotFound]   = useState(false);
+  const [step, setStep]           = useState(1);
+  const [form, setForm]           = useState<FormData>(FORM_VAZIO);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [sucesso, setSucesso]   = useState(false);
-  const [erro, setErro]         = useState("");
+  const [sucesso, setSucesso]     = useState(false);
+  const [erro, setErro]           = useState("");
 
   useEffect(() => {
-    carregarEmpresa();
-  }, []);
+    if (slug) carregarEmpresa();
+  }, [slug]);
 
   const carregarEmpresa = async () => {
     const { data, error } = await supabase
       .from("companies")
       .select("id, name, logo_url, primary_color, especialidades")
-      .eq("slug", params.slug)
+      .eq("slug", slug)
       .single();
 
     if (error || !data) {
@@ -107,7 +110,6 @@ export default async function CadastroPublicoPage({ params }: { params: Promise<
     setIsSubmitting(true);
     setErro("");
 
-    // Verifica duplicidade por CPF dentro da mesma empresa
     const cpfLimpo = form.cpf.replace(/\D/g, "");
     const { data: existente } = await supabase
       .from("freelancers")
@@ -143,7 +145,6 @@ export default async function CadastroPublicoPage({ params }: { params: Promise<
     setIsSubmitting(false);
   };
 
-  // Estados de carregamento e erro
   if (isLoading) {
     return (
       <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
@@ -186,11 +187,9 @@ export default async function CadastroPublicoPage({ params }: { params: Promise<
     <div className="min-h-screen bg-[#0a0a0a] flex flex-col items-center justify-center p-4">
       <div className="w-full max-w-lg bg-[#121212] border border-[#222] rounded-2xl shadow-2xl overflow-hidden">
 
-        {/* Header */}
         <div className="bg-[#161616] p-8 text-center border-b border-[#222]">
           {company.logo_url ? (
-            <img src={company.logo_url} alt={company.name}
-              className="h-12 mx-auto mb-4 object-contain" />
+            <img src={company.logo_url} alt={company.name} className="h-12 mx-auto mb-4 object-contain" />
           ) : (
             <div className="w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-4"
               style={{ backgroundColor: cor + "20", border: `1px solid ${cor}40` }}>
@@ -201,7 +200,6 @@ export default async function CadastroPublicoPage({ params }: { params: Promise<
           <p className="text-sm text-gray-400 mt-1">Cadastro de Freelancer</p>
         </div>
 
-        {/* Indicador de steps */}
         <div className="px-8 pt-6">
           <div className="flex items-center justify-between relative mb-8">
             <div className="absolute left-0 right-0 top-4 h-px bg-[#222] z-0"></div>
@@ -221,64 +219,50 @@ export default async function CadastroPublicoPage({ params }: { params: Promise<
           </div>
         </div>
 
-        {/* Formulário */}
         <div className="px-8 pb-4">
 
-          {/* STEP 1 */}
           {step === 1 && (
             <div className="space-y-4">
-              <div className="grid grid-cols-1 gap-4">
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">Nome Completo *</label>
+                <input type="text" value={form.nome}
+                  onChange={e => setForm({ ...form, nome: e.target.value })}
+                  placeholder="Seu nome completo"
+                  className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg p-3 text-sm text-white focus:outline-none focus:border-green-500" />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs text-gray-400 mb-1">Nome Completo *</label>
-                  <input type="text" value={form.nome}
-                    onChange={e => setForm({ ...form, nome: e.target.value })}
-                    placeholder="Seu nome completo"
-                    className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg p-3 text-sm text-white focus:outline-none"
-                    style={{ borderColor: form.nome ? cor + "60" : "" }}
-                    onFocus={e => e.target.style.borderColor = cor}
-                    onBlur={e => e.target.style.borderColor = form.nome ? cor + "60" : "#333"} />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs text-gray-400 mb-1">WhatsApp *</label>
-                    <input type="text" value={form.whatsapp}
-                      onChange={e => setForm({ ...form, whatsapp: formatarTelefone(e.target.value) })}
-                      placeholder="(00) 00000-0000" maxLength={15}
-                      className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg p-3 text-sm text-white focus:outline-none"
-                      onFocus={e => e.target.style.borderColor = cor}
-                      onBlur={e => e.target.style.borderColor = "#333"} />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-gray-400 mb-1">CPF *</label>
-                    <input type="text" value={form.cpf}
-                      onChange={e => setForm({ ...form, cpf: formatarCPF(e.target.value) })}
-                      placeholder="000.000.000-00" maxLength={14}
-                      className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg p-3 text-sm text-white focus:outline-none"
-                      onFocus={e => e.target.style.borderColor = cor}
-                      onBlur={e => e.target.style.borderColor = "#333"} />
-                  </div>
+                  <label className="block text-xs text-gray-400 mb-1">WhatsApp *</label>
+                  <input type="text" value={form.whatsapp}
+                    onChange={e => setForm({ ...form, whatsapp: formatarTelefone(e.target.value) })}
+                    placeholder="(00) 00000-0000" maxLength={15}
+                    className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg p-3 text-sm text-white focus:outline-none focus:border-green-500" />
                 </div>
                 <div>
-                  <label className="block text-xs text-gray-400 mb-1">E-mail <span className="text-gray-600">(opcional)</span></label>
-                  <input type="email" value={form.email}
-                    onChange={e => setForm({ ...form, email: e.target.value })}
-                    placeholder="seu@email.com"
-                    className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg p-3 text-sm text-white focus:outline-none"
-                    onFocus={e => e.target.style.borderColor = cor}
-                    onBlur={e => e.target.style.borderColor = "#333"} />
+                  <label className="block text-xs text-gray-400 mb-1">CPF *</label>
+                  <input type="text" value={form.cpf}
+                    onChange={e => setForm({ ...form, cpf: formatarCPF(e.target.value) })}
+                    placeholder="000.000.000-00" maxLength={14}
+                    className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg p-3 text-sm text-white focus:outline-none focus:border-green-500" />
                 </div>
+              </div>
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">E-mail <span className="text-gray-600">(opcional)</span></label>
+                <input type="email" value={form.email}
+                  onChange={e => setForm({ ...form, email: e.target.value })}
+                  placeholder="seu@email.com"
+                  className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg p-3 text-sm text-white focus:outline-none focus:border-green-500" />
               </div>
             </div>
           )}
 
-          {/* STEP 2 */}
           {step === 2 && (
             <div className="space-y-4">
               <div>
                 <label className="block text-xs text-gray-400 mb-1">Especialidade Principal *</label>
                 <select value={form.especialidade}
                   onChange={e => setForm({ ...form, especialidade: e.target.value })}
-                  className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg p-3 text-sm text-white focus:outline-none cursor-pointer">
+                  className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg p-3 text-sm text-white focus:outline-none focus:border-green-500 cursor-pointer">
                   {company.especialidades.map(esp => (
                     <option key={esp} value={esp}>{esp}</option>
                   ))}
@@ -289,25 +273,20 @@ export default async function CadastroPublicoPage({ params }: { params: Promise<
                 <input type="number" min="1" value={form.diaria}
                   onChange={e => setForm({ ...form, diaria: e.target.value })}
                   placeholder="Ex: 350"
-                  className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg p-3 text-sm text-white focus:outline-none"
-                  onFocus={e => e.target.style.borderColor = cor}
-                  onBlur={e => e.target.style.borderColor = "#333"} />
+                  className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg p-3 text-sm text-white focus:outline-none focus:border-green-500" />
               </div>
               <div>
                 <label className="block text-xs text-gray-400 mb-1">
-                  Chave PIX <span className="text-gray-600">(opcional — para receber pagamentos)</span>
+                  Chave PIX <span className="text-gray-600">(opcional)</span>
                 </label>
                 <input type="text" value={form.chave_pix}
                   onChange={e => setForm({ ...form, chave_pix: e.target.value })}
                   placeholder="CPF, e-mail, telefone ou chave aleatória"
-                  className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg p-3 text-sm text-white focus:outline-none"
-                  onFocus={e => e.target.style.borderColor = cor}
-                  onBlur={e => e.target.style.borderColor = "#333"} />
+                  className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg p-3 text-sm text-white focus:outline-none focus:border-green-500" />
               </div>
             </div>
           )}
 
-          {/* STEP 3 — Revisão */}
           {step === 3 && (
             <div className="space-y-3">
               <p className="text-sm text-gray-400 mb-4">Revise seus dados antes de enviar:</p>
@@ -328,7 +307,6 @@ export default async function CadastroPublicoPage({ params }: { params: Promise<
             </div>
           )}
 
-          {/* Erro */}
           {erro && (
             <div className="flex items-center gap-2 mt-4 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2.5 text-sm text-red-400">
               <AlertCircle size={14} className="shrink-0" /> {erro}
@@ -336,7 +314,6 @@ export default async function CadastroPublicoPage({ params }: { params: Promise<
           )}
         </div>
 
-        {/* Navegação */}
         <div className="px-8 py-6 border-t border-[#222] flex justify-between items-center">
           {step > 1 ? (
             <button onClick={voltar}
@@ -361,7 +338,6 @@ export default async function CadastroPublicoPage({ params }: { params: Promise<
             </button>
           )}
         </div>
-
       </div>
 
       <p className="text-xs text-gray-600 mt-6 text-center">
