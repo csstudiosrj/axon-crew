@@ -46,7 +46,7 @@ const formatarCPF = (v: string) => {
   return s;
 };
 
-export default function CadastroPublicoPage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function CadastroPublicoPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const [company, setCompany]   = useState<Company | null>(null);
   const [notFound, setNotFound] = useState(false);
