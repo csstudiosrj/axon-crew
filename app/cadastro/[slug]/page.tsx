@@ -147,19 +147,19 @@ export default function CadastroPublicoPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
-        <Loader2 size={32} className="text-gray-500 animate-spin" />
+      <div style={{ minHeight: "100vh", background: "#0a0a0a", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <Loader2 size={32} color="#555" className="animate-spin" />
       </div>
     );
   }
 
   if (notFound || !company) {
     return (
-      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center p-4">
-        <div className="text-center">
-          <AlertCircle size={48} className="text-gray-600 mx-auto mb-4" />
-          <h1 className="text-xl font-bold text-white mb-2">Empresa não encontrada</h1>
-          <p className="text-gray-500 text-sm">O link que você acessou não é válido.</p>
+      <div style={{ minHeight: "100vh", background: "#0a0a0a", display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }}>
+        <div style={{ textAlign: "center" }}>
+          <AlertCircle size={48} color="#444" style={{ margin: "0 auto 1rem" }} />
+          <h1 style={{ color: "#fff", fontSize: "1.25rem", fontWeight: 700, marginBottom: "0.5rem" }}>Empresa não encontrada</h1>
+          <p style={{ color: "#666", fontSize: "0.875rem" }}>O link que você acessou não é válido.</p>
         </div>
       </div>
     );
@@ -167,16 +167,15 @@ export default function CadastroPublicoPage() {
 
   if (sucesso) {
     return (
-      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center p-4">
-        <div className="text-center max-w-sm">
-          <div className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6"
-            style={{ backgroundColor: cor + "20", border: `1px solid ${cor}40` }}>
-            <CheckCircle2 size={40} style={{ color: cor }} />
+      <div style={{ minHeight: "100vh", background: "#0a0a0a", display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }}>
+        <div style={{ textAlign: "center", maxWidth: "24rem" }}>
+          <div style={{ width: 80, height: 80, borderRadius: "50%", background: cor + "20", border: `1px solid ${cor}40`, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 1.5rem" }}>
+            <CheckCircle2 size={40} color={cor} />
           </div>
-          <h1 className="text-2xl font-bold text-white mb-2">Cadastro Enviado!</h1>
-          <p className="text-gray-400 text-sm">
-            Seu cadastro foi recebido por <strong className="text-white">{company.name}</strong>.
-            Entraremos em contato pelo WhatsApp quando houver um job disponível para você.
+          <h1 style={{ color: "#fff", fontSize: "1.5rem", fontWeight: 700, marginBottom: "0.5rem" }}>Cadastro Enviado!</h1>
+          <p style={{ color: "#999", fontSize: "0.875rem" }}>
+            Seu cadastro foi recebido por <strong style={{ color: "#fff" }}>{company.name}</strong>.
+            Entraremos em contato pelo WhatsApp quando houver um job disponível.
           </p>
         </div>
       </div>
@@ -184,165 +183,156 @@ export default function CadastroPublicoPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] flex flex-col items-center py-8 px-4">
-      <div className="w-full max-w-lg bg-[#121212] border border-[#222] rounded-2xl shadow-2xl overflow-hidden">
+    <div style={{ minHeight: "100vh", background: "#0a0a0a", overflowY: "auto", padding: "2rem 1rem" }}>
+      <div style={{ maxWidth: "32rem", margin: "0 auto" }}>
+        <div style={{ background: "#121212", border: "1px solid #222", borderRadius: "1rem", overflow: "hidden" }}>
 
-        <div className="bg-[#161616] p-8 text-center border-b border-[#222]">
-          {company.logo_url ? (
-            <img src={company.logo_url} alt={company.name} className="h-12 mx-auto mb-4 object-contain" />
-          ) : (
-            <div className="w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-4"
-              style={{ backgroundColor: cor + "20", border: `1px solid ${cor}40` }}>
-              <UserPlus size={24} style={{ color: cor }} />
-            </div>
-          )}
-          <h1 className="text-xl font-bold text-white">{company.name}</h1>
-          <p className="text-sm text-gray-400 mt-1">Cadastro de Freelancer</p>
-        </div>
-
-        <div className="px-8 pt-6">
-          <div className="flex items-center justify-between relative mb-8">
-            <div className="absolute left-0 right-0 top-4 h-px bg-[#222] z-0"></div>
-            {[1, 2, 3].map(s => (
-              <div key={s} className="relative z-10 flex flex-col items-center gap-1">
-                <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all"
-                  style={step >= s
-                    ? { backgroundColor: cor, color: "#fff" }
-                    : { backgroundColor: "#1a1a1a", color: "#555", border: "1px solid #333" }}>
-                  {step > s ? <CheckCircle2 size={14} /> : s}
-                </div>
-                <span className="text-[10px] text-gray-500 whitespace-nowrap">
-                  {s === 1 ? "Dados Pessoais" : s === 2 ? "Especialidade" : "Finalizar"}
-                </span>
+          {/* Header */}
+          <div style={{ background: "#161616", padding: "2rem", textAlign: "center", borderBottom: "1px solid #222" }}>
+            {company.logo_url ? (
+              <img src={company.logo_url} alt={company.name} style={{ height: 48, margin: "0 auto 1rem", objectFit: "contain" }} />
+            ) : (
+              <div style={{ width: 48, height: 48, borderRadius: "0.75rem", background: cor + "20", border: `1px solid ${cor}40`, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 1rem" }}>
+                <UserPlus size={24} color={cor} />
               </div>
-            ))}
+            )}
+            <h1 style={{ color: "#fff", fontSize: "1.25rem", fontWeight: 700 }}>{company.name}</h1>
+            <p style={{ color: "#999", fontSize: "0.875rem", marginTop: "0.25rem" }}>Cadastro de Freelancer</p>
           </div>
-        </div>
 
-        <div className="px-8 pb-4">
-
-          {step === 1 && (
-            <div className="space-y-4">
-              <div>
-                <label className="block text-xs text-gray-400 mb-1">Nome Completo *</label>
-                <input type="text" value={form.nome}
-                  onChange={e => setForm({ ...form, nome: e.target.value })}
-                  placeholder="Seu nome completo"
-                  className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg p-3 text-sm text-white focus:outline-none focus:border-green-500" />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs text-gray-400 mb-1">WhatsApp *</label>
-                  <input type="text" value={form.whatsapp}
-                    onChange={e => setForm({ ...form, whatsapp: formatarTelefone(e.target.value) })}
-                    placeholder="(00) 00000-0000" maxLength={15}
-                    className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg p-3 text-sm text-white focus:outline-none focus:border-green-500" />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-400 mb-1">CPF *</label>
-                  <input type="text" value={form.cpf}
-                    onChange={e => setForm({ ...form, cpf: formatarCPF(e.target.value) })}
-                    placeholder="000.000.000-00" maxLength={14}
-                    className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg p-3 text-sm text-white focus:outline-none focus:border-green-500" />
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs text-gray-400 mb-1">E-mail <span className="text-gray-600">(opcional)</span></label>
-                <input type="email" value={form.email}
-                  onChange={e => setForm({ ...form, email: e.target.value })}
-                  placeholder="seu@email.com"
-                  className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg p-3 text-sm text-white focus:outline-none focus:border-green-500" />
-              </div>
-            </div>
-          )}
-
-          {step === 2 && (
-            <div className="space-y-4">
-              <div>
-                <label className="block text-xs text-gray-400 mb-1">Especialidade Principal *</label>
-                <select value={form.especialidade}
-                  onChange={e => setForm({ ...form, especialidade: e.target.value })}
-                  className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg p-3 text-sm text-white focus:outline-none focus:border-green-500 cursor-pointer">
-                  {company.especialidades.map(esp => (
-                    <option key={esp} value={esp}>{esp}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs text-gray-400 mb-1">Valor da Diária Base (R$) *</label>
-                <input type="number" min="1" value={form.diaria}
-                  onChange={e => setForm({ ...form, diaria: e.target.value })}
-                  placeholder="Ex: 350"
-                  className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg p-3 text-sm text-white focus:outline-none focus:border-green-500" />
-              </div>
-              <div>
-                <label className="block text-xs text-gray-400 mb-1">
-                  Chave PIX <span className="text-gray-600">(opcional)</span>
-                </label>
-                <input type="text" value={form.chave_pix}
-                  onChange={e => setForm({ ...form, chave_pix: e.target.value })}
-                  placeholder="CPF, e-mail, telefone ou chave aleatória"
-                  className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg p-3 text-sm text-white focus:outline-none focus:border-green-500" />
-              </div>
-            </div>
-          )}
-
-          {step === 3 && (
-            <div className="space-y-3">
-              <p className="text-sm text-gray-400 mb-4">Revise seus dados antes de enviar:</p>
-              {[
-                { label: "Nome", value: form.nome },
-                { label: "WhatsApp", value: form.whatsapp },
-                { label: "CPF", value: form.cpf },
-                { label: "E-mail", value: form.email || "Não informado" },
-                { label: "Especialidade", value: form.especialidade },
-                { label: "Diária Base", value: `R$ ${form.diaria},00` },
-                { label: "Chave PIX", value: form.chave_pix || "Não informada" },
-              ].map(item => (
-                <div key={item.label} className="flex justify-between items-center bg-[#0a0a0a] border border-[#222] rounded-lg px-4 py-2.5">
-                  <span className="text-xs text-gray-500">{item.label}</span>
-                  <span className="text-sm text-gray-200 font-medium">{item.value}</span>
+          {/* Steps */}
+          <div style={{ padding: "1.5rem 2rem 0" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", position: "relative", marginBottom: "2rem" }}>
+              <div style={{ position: "absolute", left: 0, right: 0, top: 16, height: 1, background: "#222", zIndex: 0 }}></div>
+              {[1, 2, 3].map(s => (
+                <div key={s} style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+                  <div style={{
+                    width: 32, height: 32, borderRadius: "50%",
+                    background: step >= s ? cor : "#1a1a1a",
+                    border: step >= s ? "none" : "1px solid #333",
+                    color: step >= s ? "#fff" : "#555",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    fontSize: "0.75rem", fontWeight: 700
+                  }}>
+                    {step > s ? <CheckCircle2 size={14} /> : s}
+                  </div>
+                  <span style={{ fontSize: "0.625rem", color: "#666", whiteSpace: "nowrap" }}>
+                    {s === 1 ? "Dados Pessoais" : s === 2 ? "Especialidade" : "Finalizar"}
+                  </span>
                 </div>
               ))}
             </div>
-          )}
+          </div>
 
-          {erro && (
-            <div className="flex items-center gap-2 mt-4 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2.5 text-sm text-red-400">
-              <AlertCircle size={14} className="shrink-0" /> {erro}
-            </div>
-          )}
+          {/* Form */}
+          <div style={{ padding: "0 2rem 1rem" }}>
+
+            {step === 1 && (
+              <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+                <div>
+                  <label style={{ display: "block", fontSize: "0.75rem", color: "#999", marginBottom: "0.25rem" }}>Nome Completo *</label>
+                  <input type="text" value={form.nome} onChange={e => setForm({ ...form, nome: e.target.value })}
+                    placeholder="Seu nome completo"
+                    style={{ width: "100%", background: "#0a0a0a", border: "1px solid #333", borderRadius: "0.5rem", padding: "0.75rem", fontSize: "0.875rem", color: "#fff", outline: "none", boxSizing: "border-box" }} />
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+                  <div>
+                    <label style={{ display: "block", fontSize: "0.75rem", color: "#999", marginBottom: "0.25rem" }}>WhatsApp *</label>
+                    <input type="text" value={form.whatsapp} onChange={e => setForm({ ...form, whatsapp: formatarTelefone(e.target.value) })}
+                      placeholder="(00) 00000-0000" maxLength={15}
+                      style={{ width: "100%", background: "#0a0a0a", border: "1px solid #333", borderRadius: "0.5rem", padding: "0.75rem", fontSize: "0.875rem", color: "#fff", outline: "none", boxSizing: "border-box" }} />
+                  </div>
+                  <div>
+                    <label style={{ display: "block", fontSize: "0.75rem", color: "#999", marginBottom: "0.25rem" }}>CPF *</label>
+                    <input type="text" value={form.cpf} onChange={e => setForm({ ...form, cpf: formatarCPF(e.target.value) })}
+                      placeholder="000.000.000-00" maxLength={14}
+                      style={{ width: "100%", background: "#0a0a0a", border: "1px solid #333", borderRadius: "0.5rem", padding: "0.75rem", fontSize: "0.875rem", color: "#fff", outline: "none", boxSizing: "border-box" }} />
+                  </div>
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: "0.75rem", color: "#999", marginBottom: "0.25rem" }}>E-mail <span style={{ color: "#555" }}>(opcional)</span></label>
+                  <input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })}
+                    placeholder="seu@email.com"
+                    style={{ width: "100%", background: "#0a0a0a", border: "1px solid #333", borderRadius: "0.5rem", padding: "0.75rem", fontSize: "0.875rem", color: "#fff", outline: "none", boxSizing: "border-box" }} />
+                </div>
+              </div>
+            )}
+
+            {step === 2 && (
+              <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+                <div>
+                  <label style={{ display: "block", fontSize: "0.75rem", color: "#999", marginBottom: "0.25rem" }}>Especialidade Principal *</label>
+                  <select value={form.especialidade} onChange={e => setForm({ ...form, especialidade: e.target.value })}
+                    style={{ width: "100%", background: "#0a0a0a", border: "1px solid #333", borderRadius: "0.5rem", padding: "0.75rem", fontSize: "0.875rem", color: "#fff", outline: "none", cursor: "pointer", boxSizing: "border-box" }}>
+                    {company.especialidades.map(esp => <option key={esp} value={esp}>{esp}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: "0.75rem", color: "#999", marginBottom: "0.25rem" }}>Valor da Diária Base (R$) *</label>
+                  <input type="number" min="1" value={form.diaria} onChange={e => setForm({ ...form, diaria: e.target.value })}
+                    placeholder="Ex: 350"
+                    style={{ width: "100%", background: "#0a0a0a", border: "1px solid #333", borderRadius: "0.5rem", padding: "0.75rem", fontSize: "0.875rem", color: "#fff", outline: "none", boxSizing: "border-box" }} />
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: "0.75rem", color: "#999", marginBottom: "0.25rem" }}>Chave PIX <span style={{ color: "#555" }}>(opcional)</span></label>
+                  <input type="text" value={form.chave_pix} onChange={e => setForm({ ...form, chave_pix: e.target.value })}
+                    placeholder="CPF, e-mail, telefone ou chave aleatória"
+                    style={{ width: "100%", background: "#0a0a0a", border: "1px solid #333", borderRadius: "0.5rem", padding: "0.75rem", fontSize: "0.875rem", color: "#fff", outline: "none", boxSizing: "border-box" }} />
+                </div>
+              </div>
+            )}
+
+            {step === 3 && (
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                <p style={{ fontSize: "0.875rem", color: "#999", marginBottom: "0.5rem" }}>Revise seus dados antes de enviar:</p>
+                {[
+                  { label: "Nome", value: form.nome },
+                  { label: "WhatsApp", value: form.whatsapp },
+                  { label: "CPF", value: form.cpf },
+                  { label: "E-mail", value: form.email || "Não informado" },
+                  { label: "Especialidade", value: form.especialidade },
+                  { label: "Diária Base", value: `R$ ${form.diaria},00` },
+                  { label: "Chave PIX", value: form.chave_pix || "Não informada" },
+                ].map(item => (
+                  <div key={item.label} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#0a0a0a", border: "1px solid #222", borderRadius: "0.5rem", padding: "0.625rem 1rem" }}>
+                    <span style={{ fontSize: "0.75rem", color: "#666" }}>{item.label}</span>
+                    <span style={{ fontSize: "0.875rem", color: "#e5e5e5", fontWeight: 500 }}>{item.value}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {erro && (
+              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginTop: "1rem", background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: "0.5rem", padding: "0.625rem 0.75rem", color: "#f87171", fontSize: "0.875rem" }}>
+                <AlertCircle size={14} /> {erro}
+              </div>
+            )}
+          </div>
+
+          {/* Nav */}
+          <div style={{ padding: "1.5rem 2rem", borderTop: "1px solid #222", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            {step > 1 ? (
+              <button onClick={voltar} style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.875rem", color: "#999", background: "none", border: "none", cursor: "pointer" }}>
+                <ChevronLeft size={16} /> Voltar
+              </button>
+            ) : <div />}
+
+            {step < 3 ? (
+              <button onClick={avancar} style={{ display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.625rem 1.5rem", borderRadius: "0.5rem", fontSize: "0.875rem", fontWeight: 500, color: "#fff", background: cor, border: "none", cursor: "pointer" }}>
+                Próximo <ChevronRight size={16} />
+              </button>
+            ) : (
+              <button onClick={handleSubmit} disabled={isSubmitting} style={{ display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.625rem 1.5rem", borderRadius: "0.5rem", fontSize: "0.875rem", fontWeight: 500, color: "#fff", background: cor, border: "none", cursor: isSubmitting ? "not-allowed" : "pointer", opacity: isSubmitting ? 0.5 : 1 }}>
+                {isSubmitting ? <><Loader2 size={16} className="animate-spin" /> Enviando...</> : <><CheckCircle2 size={16} /> Enviar Cadastro</>}
+              </button>
+            )}
+          </div>
         </div>
 
-        <div className="px-8 py-6 border-t border-[#222] flex justify-between items-center">
-          {step > 1 ? (
-            <button onClick={voltar}
-              className="flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors">
-              <ChevronLeft size={16} /> Voltar
-            </button>
-          ) : <div />}
-
-          {step < 3 ? (
-            <button onClick={avancar}
-              className="flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-medium text-white transition-all duration-200 active:scale-95"
-              style={{ backgroundColor: cor }}>
-              Próximo <ChevronRight size={16} />
-            </button>
-          ) : (
-            <button onClick={handleSubmit} disabled={isSubmitting}
-              className="flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-medium text-white transition-all duration-200 active:scale-95 disabled:opacity-50"
-              style={{ backgroundColor: cor }}>
-              {isSubmitting
-                ? <><Loader2 size={16} className="animate-spin" /> Enviando...</>
-                : <><CheckCircle2 size={16} /> Enviar Cadastro</>}
-            </button>
-          )}
-        </div>
+        <p style={{ textAlign: "center", fontSize: "0.75rem", color: "#444", marginTop: "1.5rem" }}>
+          Powered by <span style={{ color: "#666" }}>ARXUM Crew</span>
+        </p>
       </div>
-
-      <p className="text-xs text-gray-600 mt-6 text-center">
-        Powered by <span className="text-gray-500">ARXUM Crew</span>
-      </p>
     </div>
   );
 }
