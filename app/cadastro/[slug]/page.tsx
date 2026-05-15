@@ -184,7 +184,7 @@ export default function CadastroPublicoPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] flex flex-col items-center justify-center p-4">
+    <div className="min-h-screen bg-[#0a0a0a] flex flex-col items-center py-8 px-4">
       <div className="w-full max-w-lg bg-[#121212] border border-[#222] rounded-2xl shadow-2xl overflow-hidden">
 
         <div className="bg-[#161616] p-8 text-center border-b border-[#222]">
