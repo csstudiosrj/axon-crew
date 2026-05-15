@@ -25,7 +25,7 @@ export default function SystemLayout({ children }: { children: React.ReactNode }
     window.location.href = "/login";
   };
 
-  if (pathname === "/login") return <>{children}</>;
+  if (pathname === "/login" || pathname.startsWith("/cadastro")) return <>{children}</>;
 
   return (
     <div className="flex h-screen w-full bg-[#0a0a0a] text-gray-200 overflow-hidden font-sans">
