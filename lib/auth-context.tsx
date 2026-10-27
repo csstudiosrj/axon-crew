@@ -22,6 +22,7 @@ interface Company {
   whatsapp: string | null;
   especialidades: string[];
   segmento?: string | null;
+  plano?: string | null;
 }
 
 type Resultado =
@@ -45,7 +46,11 @@ async function carregar(): Promise<Resultado> {
   // informados em /criar-conta (guardados nos metadados do usuário).
   if (!p) {
     const meta = session.user.user_metadata ?? {};
-    if (meta.empresa_nome && meta.empresa_slug) {
+    if (meta.convite_token) {
+      // Convidado para a equipe de uma empresa existente.
+      await supabase.rpc("aceitar_convite_equipe", { p_token: meta.convite_token });
+      p = await buscarPerfil();
+    } else if (meta.empresa_nome && meta.empresa_slug) {
       await supabase.rpc("criar_empresa", { p_nome: meta.empresa_nome, p_slug: meta.empresa_slug });
       p = await buscarPerfil();
       if (p && meta.empresa_segmento) {
@@ -96,7 +101,7 @@ export function useAuth() {
 
   const segmento: Segmento = getSegmento(company?.segmento);
 
-  return { companyId, profile, company, especialidades, segmento, termos: segmento.termos, ready, signOut };
+  return { companyId, profile, company, especialidades, segmento, termos: segmento.termos, papel: profile?.role, ready, signOut };
 }
 
 // Depois de salvar as Configurações, força recarregar a empresa.

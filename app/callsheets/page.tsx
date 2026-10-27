@@ -6,6 +6,7 @@ import {
   Users, MessageCircle, AlertTriangle, ChevronDown, ChevronUp
 } from "lucide-react";
 import { supabase } from "../../lib/supabase";
+import Link from "next/link";
 import { useAuth } from "../../lib/auth-context";
 import { maiuscula, novo, artigo, de, primeiro, flex, nenhum, um } from "../../lib/segmentos";
 import { BASE_PATH } from "../../lib/base-path";
@@ -18,6 +19,7 @@ interface FreelancerEscalado {
   confirmado: boolean;
   confirmadoEm?: string | null;
   token: string;
+  escalaId: string;
   resposta: "pendente" | "confirmado" | "recusado";
   checkinEm?: string | null;
   checkoutEm?: string | null;
@@ -102,6 +104,7 @@ export default function CallSheetsPage() {
                   confirmado:   esc.confirmado ?? false,
                   confirmadoEm: esc.confirmado_em ?? null,
                   token:        esc.token,
+                  escalaId:     esc.id,
                   resposta:     esc.resposta ?? (esc.confirmado ? "confirmado" : "pendente"),
                   checkinEm:    esc.checkin_em ?? null,
                   checkoutEm:   esc.checkout_em ?? null,
@@ -316,6 +319,7 @@ export default function CallSheetsPage() {
                                       Confirmou às {horaCurta(f.confirmadoEm)}
                                       {f.checkinEm && <> · chegou {horaCurta(f.checkinEm)}</>}
                                       {f.checkoutEm && <> · saiu {horaCurta(f.checkoutEm)}</>}
+                                      {" · "}<Link href={`/documento/${f.escalaId}?tipo=termo`} className="text-violet-300 hover:text-violet-200">ver termo</Link>
                                     </p>
                                   )}
                                 </div>

@@ -9,11 +9,15 @@ import {
 import { supabase } from "../../lib/supabase";
 import { useAuth, invalidarEmpresa } from "../../lib/auth-context";
 import { SEGMENTOS, getSegmento, maiuscula, SEGMENTO_PADRAO } from "../../lib/segmentos";
+import { getPlano } from "../../lib/planos";
+import PlanoCard from "../../components/painel/PlanoCard";
+import EquipeCard from "../../components/painel/EquipeCard";
 import { BASE_PATH } from "../../lib/base-path";
 
 
 export default function ConfiguracoesPage() {
-  const { companyId, ready } = useAuth();
+  const { companyId, ready, company, profile } = useAuth();
+  const marcaPropria = getPlano(company?.plano).marcaPropria;
 
   const [nome, setNome]                   = useState("");
   const [slug, setSlug]                   = useState("");
@@ -161,6 +165,7 @@ export default function ConfiguracoesPage() {
       </div>
 
       <div className="space-y-6">
+        {companyId && <PlanoCard companyId={companyId} plano={company?.plano} empresa={nome} />}
 
         {/* DADOS DA EMPRESA */}
         <div className="bg-[#121212] border border-[#222] rounded-xl p-6">
@@ -248,6 +253,12 @@ export default function ConfiguracoesPage() {
           <h3 className="text-base font-semibold text-white flex items-center gap-2 mb-5">
             <Palette size={18} className="text-violet-400" /> Aparência & White Label
           </h3>
+          {!marcaPropria && (
+            <p className="mb-4 rounded-lg border border-violet-500/20 bg-violet-500/5 px-3 py-2 text-xs text-violet-200">
+              Logo e cor próprios nas páginas que o profissional vê fazem parte dos planos Profissional e Empresa.
+              Você pode configurar agora; eles passam a aparecer quando o plano mudar.
+            </p>
+          )}
           <div className="flex items-center gap-8 flex-wrap">
             <div>
               <label className="block text-xs text-gray-400 mb-2">Cor Principal</label>
@@ -385,6 +396,9 @@ export default function ConfiguracoesPage() {
           )}
         </div>
 
+        {companyId && (profile?.role === "admin" || profile?.role === "super_admin") && (
+          <EquipeCard companyId={companyId} plano={company?.plano} meuId={profile?.id} avisar={mostrarToast} />
+        )}
       </div>
     </div>
   );

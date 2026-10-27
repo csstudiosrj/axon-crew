@@ -10,6 +10,7 @@ import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../lib/auth-context";
 import { BASE_PATH } from "../../lib/base-path";
 import Lembretes from "../../components/painel/Lembretes";
+import EquipesSalvas from "../../components/painel/EquipesSalvas";
 import { notaQualidade, type HistoricoEscala } from "../../lib/qualidade";
 import { maiuscula, novo, artigo, de, primeiro, flex, nenhum, um } from "../../lib/segmentos";
 
@@ -646,6 +647,10 @@ export default function AgendaPage() {
               <button onClick={() => setModalEscala(null)} className="p-2 bg-[#222] hover:bg-[#333] rounded-full text-gray-400 hover:text-white"><X size={20} /></button>
             </div>
             <div className="flex-1 overflow-y-auto p-6 bg-[#0a0a0a]">
+              {companyId && modalEscala.slots.length > 0 && (
+                <EquipesSalvas companyId={companyId} eventoId={modalEscala.id} slots={modalEscala.slots}
+                  todos={todosFreelancers} aoMudar={carregarTudo} avisar={mostrarToast} />
+              )}
               {modalEscala.slots.length === 0 ? (
                 <div className="text-center py-16 text-gray-500">
                   <Users size={40} className="mx-auto mb-3 opacity-30" />

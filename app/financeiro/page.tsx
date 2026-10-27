@@ -7,7 +7,10 @@ import {
   Copy, QrCode, Clock, AlertCircle
 } from "lucide-react";
 import { supabase } from "../../lib/supabase";
+import Link from "next/link";
 import { useAuth } from "../../lib/auth-context";
+import PixPagamento from "../../components/painel/PixPagamento";
+import { getPlano } from "../../lib/planos";
 import { maiuscula, novo, artigo, de, primeiro, flex, nenhum, um } from "../../lib/segmentos";
 
 const formatBRL = (valor: number): string =>
@@ -34,7 +37,9 @@ interface Pagamento {
 }
 
 export default function FinanceiroPage() {
-  const { companyId, termos } = useAuth();
+  const { companyId, termos, company } = useAuth();
+  const podeExportar = getPlano(company?.plano).exportacao;
+  const [pixAberto, setPixAberto] = useState<string | null>(null);
   const gJob = termos.generoJob;
 
   const [pagamentos, setPagamentos] = useState<Pagamento[]>([]);
@@ -128,6 +133,10 @@ export default function FinanceiroPage() {
   };
 
   const exportarCSV = () => {
+    if (!podeExportar) {
+      mostrarToast("A exportação em CSV faz parte dos planos Profissional e Empresa.", "erro");
+      return;
+    }
     const linhas = [
       [maiuscula(termos.profissional), maiuscula(termos.job), `Data ${de(termos.job, gJob)}`, "Valor", "Chave PIX", "Status", "Data Pagamento"],
       ...pagamentosFiltrados.map((p) => [
@@ -305,8 +314,9 @@ export default function FinanceiroPage() {
                           Marcar Pago
                         </button>
                       ) : (
-                        <span className="text-green-500 flex items-center justify-end gap-1 text-xs font-medium">
-                          <Check size={14} /> Quitado
+                        <span className="flex items-center justify-end gap-3 text-xs font-medium">
+                          <span className="text-green-500 flex items-center gap-1"><Check size={14} /> Quitado</span>
+                          <Link href={`/documento/${pagamento.id}?tipo=recibo`} className="text-violet-300 hover:text-violet-200">Recibo</Link>
                         </span>
                       )}
                     </td>
@@ -337,6 +347,12 @@ export default function FinanceiroPage() {
                     className="flex items-center gap-1 text-violet-400 hover:text-violet-300 font-mono text-xs">
                     {modalConfirmarPgto.chavePix} <Copy size={11} />
                   </button>
+                </div>
+              )}
+              {modalConfirmarPgto.chavePix && (
+                <div className="mt-3 pt-3 border-t border-[#222]">
+                  <PixPagamento chave={modalConfirmarPgto.chavePix} nome={modalConfirmarPgto.freelaNome}
+                    valor={modalConfirmarPgto.valor} aoCopiar={() => mostrarToast("PIX copia e cola copiado!", "sucesso")} />
                 </div>
               )}
               {!modalConfirmarPgto.chavePix && (
@@ -377,7 +393,8 @@ export default function FinanceiroPage() {
                     </div>
                   )}
                   {pendentesLote.map((pg) => (
-                    <div key={pg.id} className="bg-[#0a0a0a] border border-[#333] p-3 rounded-lg flex justify-between items-start gap-3">
+                    <div key={pg.id} className="bg-[#0a0a0a] border border-[#333] p-3 rounded-lg">
+                    <div className="flex justify-between items-start gap-3">
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-white">{pg.freelaNome}</p>
                         <p className="text-xs text-gray-500 truncate">{pg.eventoTitulo} · {formatDataBR(pg.eventoData)}</p>
@@ -396,7 +413,20 @@ export default function FinanceiroPage() {
                         ) : (
                           <span className="text-xs text-yellow-600 flex items-center gap-1"><AlertCircle size={11} /> Sem PIX</span>
                         )}
+                        {pg.chavePix && (
+                          <button onClick={() => setPixAberto(pixAberto === pg.id ? null : pg.id)}
+                            className="mt-1.5 text-[11px] text-violet-300 hover:text-violet-200">
+                            {pixAberto === pg.id ? "Fechar QR code" : "QR code / copia e cola"}
+                          </button>
+                        )}
                       </div>
+                    </div>
+                    {pixAberto === pg.id && pg.chavePix && (
+                      <div className="mt-3 pt-3 border-t border-[#222]">
+                        <PixPagamento chave={pg.chavePix} nome={pg.freelaNome} valor={pg.valor}
+                          aoCopiar={() => mostrarToast("PIX copia e cola copiado!", "sucesso")} />
+                      </div>
+                    )}
                     </div>
                   ))}
                 </>

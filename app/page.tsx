@@ -7,6 +7,7 @@ import CrewLogo, { CrewMark, CrewWordmark } from "../components/marketing/CrewLo
 import HeroTelas from "../components/marketing/HeroTelas";
 import SegmentosDemo from "../components/marketing/SegmentosDemo";
 import { SEGMENTOS } from "../lib/segmentos";
+import { PLANOS } from "../lib/planos";
 import { JanelaNavegador, JanelaCelular } from "../components/marketing/TelaFrame";
 
 const WHATSAPP = "5521967119815";
@@ -78,6 +79,7 @@ export default function CrewHome() {
             <a href="#funcionalidades" className="text-[14px] text-arx-mist hover:text-white">Funcionalidades</a>
             <a href="#como-funciona" className="text-[14px] text-arx-mist hover:text-white">Como funciona</a>
             <a href="#segmentos" className="text-[14px] text-arx-mist hover:text-white">Segmentos</a>
+            <a href="#precos" className="text-[14px] text-arx-mist hover:text-white">Preços</a>
             <a href="#contato" className="text-[14px] text-arx-mist hover:text-white">Contato</a>
           </nav>
           <div className="flex items-center gap-2.5 sm:gap-5">
@@ -294,6 +296,52 @@ export default function CrewHome() {
           </div>
         </Secao>
 
+        {/* Preços */}
+        <Secao id="precos">
+          <Rotulo>Preços</Rotulo>
+          <h2 className="mt-4 max-w-[760px] text-[34px] font-medium leading-[1.1] tracking-[-0.02em] text-white sm:text-[44px]">
+            Comece grátis. Pague quando a operação crescer.
+          </h2>
+          <p className="mt-5 max-w-[640px] text-[16px] leading-relaxed text-arx-mist">
+            Sem comissão por profissional e sem taxa por escala. No plano anual, 2 meses saem de graça.
+          </p>
+          <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {PLANOS.map((p) => (
+              <div key={p.id} className={`relative flex flex-col rounded-xl border p-6 ${p.destaque ? "border-arx-crew/60 bg-arx-crew/[0.07]" : "border-white/10 bg-arx-surface/50"}`}>
+                {p.destaque && (
+                  <span className="absolute -top-3 left-6 rounded-full bg-arx-crew-strong px-2.5 py-1 text-[11px] font-semibold text-white">Mais escolhido</span>
+                )}
+                <h3 className="text-[17px] font-medium text-white">{p.nome}</h3>
+                <p className="mt-1 text-[13px] text-arx-mist">{p.descricao}</p>
+                <p className="mt-6 flex items-baseline gap-1 text-white">
+                  {p.preco === 0 ? (
+                    <span className="text-[34px] font-semibold tracking-[-0.02em]">R$ 0</span>
+                  ) : (
+                    <>
+                      <span className="text-[34px] font-semibold tracking-[-0.02em]">R$ {p.preco}</span>
+                      <span className="text-[14px] text-arx-slate">/mês</span>
+                    </>
+                  )}
+                </p>
+                <ul className="mt-6 flex-1 space-y-2.5">
+                  {p.itens.map((i) => (
+                    <li key={i} className="flex gap-2.5 text-[14px] leading-snug text-arx-frost">
+                      <Check size={15} className="mt-0.5 shrink-0 text-arx-crew-soft" aria-hidden="true" /> {i}
+                    </li>
+                  ))}
+                </ul>
+                <Link href="/criar-conta"
+                  className={`mt-8 rounded-lg px-4 py-3 text-center text-[14px] font-semibold transition-colors ${p.destaque ? "bg-arx-crew-strong text-white hover:bg-arx-crew" : "border border-white/15 text-white hover:bg-white/5"}`}>
+                  {p.preco === 0 ? "Começar grátis" : "Começar agora"}
+                </Link>
+              </div>
+            ))}
+          </div>
+          <p className="mt-6 text-[13px] text-arx-slate">
+            Toda conta começa no Grátis. Para mudar de plano, é só falar com a equipe pelo WhatsApp dentro do painel.
+          </p>
+        </Secao>
+
         {/* CTA final */}
         <section className="border-b border-arx-line">
           <div className="mx-auto w-full max-w-[1200px] px-4 py-24 text-center sm:px-8 sm:py-32">
@@ -336,6 +384,7 @@ export default function CrewHome() {
             <ul className="mt-5 space-y-3 text-[14px]">
               <li><a href="#funcionalidades" className="text-arx-mist hover:text-white">Funcionalidades</a></li>
               <li><a href="#como-funciona" className="text-arx-mist hover:text-white">Como funciona</a></li>
+              <li><a href="#precos" className="text-arx-mist hover:text-white">Preços</a></li>
               <li><Link href="/criar-conta" className="text-arx-mist hover:text-white">Cadastrar empresa</Link></li>
               <li><Link href="/login" className="text-arx-mist hover:text-white">Entrar</Link></li>
             </ul>

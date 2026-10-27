@@ -3,16 +3,18 @@
 import React, { useState } from "react";
 import {
   Users, CalendarDays, DollarSign, ClipboardList,
-  Settings, LogOut, ChevronLeft, ChevronRight
+  Settings, LogOut, ChevronLeft, ChevronRight, BarChart3, Lock
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { maiuscula } from "@/lib/segmentos";
+import { podeAcessar } from "@/lib/permissoes";
 import { CrewMark } from "@/components/marketing/CrewLogo";
 
 // Rotas abertas ao público: renderizadas sem a sidebar do sistema.
-const ROTAS_PUBLICAS = ["/login", "/criar-conta", "/cadastro", "/roteiro", "/confirmar", "/p/"];
+// /documento usa login, mas é renderizado sem a sidebar para imprimir.
+const ROTAS_PUBLICAS = ["/login", "/criar-conta", "/cadastro", "/roteiro", "/confirmar", "/p/", "/documento"];
 
 const CREW = "#8b5cf6";
 
@@ -31,15 +33,17 @@ export default function SystemLayout({ children }: { children: React.ReactNode }
 // vocabulário do segmento da empresa.
 function PainelInterno({ pathname, children }: { pathname: string; children: React.ReactNode }) {
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const { termos, company, signOut } = useAuth();
+  const { termos, company, papel, ready, signOut } = useAuth();
 
   const menuItems = [
     { name: `Base de ${maiuscula(termos.profissionais)}`, icon: Users,         path: "/freelas" },
     { name: `Agenda & ${maiuscula(termos.jobs)}`,         icon: CalendarDays,  path: "/agenda" },
     { name: `Financeiro & PIX`,                           icon: DollarSign,    path: "/financeiro" },
     { name: maiuscula(termos.roteiros),                   icon: ClipboardList, path: "/callsheets" },
+    { name: "Relatórios",                                 icon: BarChart3,     path: "/relatorios" },
     { name: "Configurações",                              icon: Settings,      path: "/configuracoes" },
-  ];
+  ].filter((m) => podeAcessar(papel, m.path));
+  const semAcesso = ready && !podeAcessar(papel, pathname);
 
   return (
     <div style={{ display: "flex", height: "100vh", width: "100%", overflow: "hidden", fontFamily: "var(--font-dm-sans), sans-serif" }}>
@@ -126,7 +130,13 @@ function PainelInterno({ pathname, children }: { pathname: string; children: Rea
         </header>
 
         <main style={{ flex: 1, overflowY: "auto", position: "relative" }}>
-          {children}
+          {semAcesso ? (
+            <div style={{ padding: "4rem 2rem", textAlign: "center", color: "#9aabbd" }}>
+              <Lock size={32} style={{ margin: "0 auto 1rem", color: "#5e7a94" }} />
+              <p style={{ color: "#fff", fontWeight: 600, marginBottom: 4 }}>Esta área não está liberada para o seu perfil.</p>
+              <p style={{ fontSize: "0.875rem" }}>Peça acesso a um administrador da empresa.</p>
+            </div>
+          ) : children}
         </main>
       </div>
     </div>
