@@ -7,6 +7,7 @@ import {
 import CrewLogo, { CrewMark, CrewWordmark } from "../components/marketing/CrewLogo";
 import HeroTelas from "../components/marketing/HeroTelas";
 import SegmentosDemo from "../components/marketing/SegmentosDemo";
+import { SIMBOLOS } from "../components/marketing/SimbolosFamilia";
 import { SEGMENTOS } from "../lib/segmentos";
 import { PLANOS } from "../lib/planos";
 import { JanelaNavegador, JanelaCelular } from "../components/marketing/TelaFrame";
@@ -410,7 +411,7 @@ export default function CrewHome() {
               ].map(([nome, href, cor]) => (
                 <li key={nome}>
                   <a href={href} className="inline-flex items-center gap-2 text-arx-mist hover:text-white">
-                    <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: cor }} aria-hidden="true" />
+                    {SIMBOLOS[nome.toLowerCase()]?.(cor)}
                     ARXUM {nome}
                   </a>
                 </li>
