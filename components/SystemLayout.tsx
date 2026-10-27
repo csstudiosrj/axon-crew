@@ -14,7 +14,7 @@ import { CrewMark } from "@/components/marketing/CrewLogo";
 
 // Rotas abertas ao público: renderizadas sem a sidebar do sistema.
 // /documento usa login, mas é renderizado sem a sidebar para imprimir.
-const ROTAS_PUBLICAS = ["/login", "/criar-conta", "/cadastro", "/roteiro", "/confirmar", "/p/", "/documento"];
+const ROTAS_PUBLICAS = ["/login", "/criar-conta", "/recuperar-senha", "/redefinir-senha", "/cadastro", "/roteiro", "/confirmar", "/p/", "/documento"];
 
 const CREW = "#8b5cf6";
 
