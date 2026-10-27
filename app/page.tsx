@@ -1,7 +1,8 @@
 import Link from "next/link";
 import {
   Users, CalendarDays, ClipboardList, Wallet, Palette, Link2,
-  MessageCircle, AlertTriangle, Check, ArrowRight,
+  MessageCircle, Check, ArrowRight, MapPinCheck, FileSignature, Smartphone,
+  BarChart3, UsersRound, ShieldCheck,
 } from "lucide-react";
 import CrewLogo, { CrewMark, CrewWordmark } from "../components/marketing/CrewLogo";
 import HeroTelas from "../components/marketing/HeroTelas";
@@ -231,21 +232,21 @@ export default function CrewHome() {
                 Roteiro no WhatsApp. Confirmação na hora.
               </h3>
               <p className="mt-5 text-[16px] leading-relaxed text-arx-mist">
-                Publique a escala (call sheet, briefing, ordem de serviço — o nome muda com o seu
-                segmento) e envie o link para a equipe. Cada pessoa abre no celular, vê data, horário e
-                local e confirma presença. No painel, você acompanha quem já confirmou e quem falta.
+                Cada pessoa escalada recebe no WhatsApp um link só dela: vê data, horário, local e valor,
+                aceita o termo de prestação de serviço e confirma — ou recusa, e a vaga volta a ficar livre
+                para você chamar um substituto. No dia, registra a chegada e a saída pelo mesmo link.
               </p>
               <Lista itens={[
-                "Mensagem de WhatsApp pronta para cada pessoa escalada.",
-                "Contagem de confirmados e aguardando em cada escala.",
-                "Despublique quando quiser: o link deixa de funcionar.",
+                "Termo aceito com data, hora e IP, pronto para imprimir.",
+                "Recusa libera a vaga e o sistema sugere quem chamar no lugar.",
+                "Check-in e check-out com localização, direto do celular.",
               ]} />
               <div className="mt-10">
                 <JanelaNavegador src="/landing/tela-callsheets.webp" alt="Tela da escala publicada com o status de confirmação da equipe" />
               </div>
             </div>
             <div className="flex flex-col items-center gap-4">
-              <JanelaCelular src="/landing/mobile-roteiro.webp" alt="Escala aberta no celular do profissional, com botão de confirmar presença" />
+              <JanelaCelular src="/landing/mobile-confirmar.webp" alt="Convite individual no celular, com o termo de prestação de serviço e o botão de confirmar presença" />
               <p className="flex items-center gap-2 text-[13px] text-arx-slate">
                 <MessageCircle size={14} aria-hidden="true" /> O que o profissional vê no celular
               </p>
@@ -259,11 +260,11 @@ export default function CrewHome() {
               titulo="Quem trabalhou, quanto recebe e o que já foi pago."
               texto="Cada pessoa escalada vira um pagamento com o valor da vaga. Você vê o total a pagar, o que já foi quitado e o que passou da data sem pagamento."
               itens={[
-                "Pagamentos atrasados destacados automaticamente.",
-                "Chave PIX de cada profissional ao lado do valor.",
-                "Exportação em CSV para a contabilidade.",
+                "PIX copia e cola e QR code com o valor já preenchido.",
+                "Recibo de pagamento pronto para imprimir ou salvar em PDF.",
+                "Pagamentos atrasados destacados e exportação em CSV.",
               ]}>
-              <JanelaNavegador src="/landing/tela-financeiro.webp" alt="Tela Financeiro & PIX com totais a pagar, pagos e atrasados" />
+              <JanelaNavegador src="/landing/tela-pix.webp" alt="Lote de pagamentos com QR code PIX para pagar cada profissional" />
             </Recurso>
 
             <Recurso rotulo="Sua marca" icone={Palette} inverter
@@ -281,11 +282,14 @@ export default function CrewHome() {
 
         {/* Destaques rápidos */}
         <Secao>
-          <div className="grid gap-px overflow-hidden rounded-xl border border-white/10 bg-white/10 sm:grid-cols-3">
+          <div className="grid gap-px overflow-hidden rounded-xl border border-white/10 bg-white/10 sm:grid-cols-2 lg:grid-cols-3">
             {[
-              { icone: AlertTriangle, titulo: "Menos furo de equipe", texto: "Os alertas mostram vagas abertas e conflitos de horário com antecedência, não na hora." },
-              { icone: MessageCircle, titulo: "Tudo pelo WhatsApp", texto: "Convite, roteiro e confirmação usam o app que a sua equipe já tem no bolso." },
-              { icone: Check, titulo: "Pagamento sem esquecer ninguém", texto: "Quem foi escalado aparece no financeiro com o valor certo até ser marcado como pago." },
+              { icone: MapPinCheck, titulo: "Presença comprovada", texto: "Check-in e check-out com horário e localização. Quem faltou aparece na nota do profissional." },
+              { icone: FileSignature, titulo: "Termo digital", texto: "Cada confirmação vem com o termo aceito, registrado com data, hora e IP." },
+              { icone: Smartphone, titulo: "Área do profissional", texto: "Cada pessoa tem um link com seus convites, sua agenda e o que tem a receber." },
+              { icone: BarChart3, titulo: "Relatórios do mês", texto: "Custo por trabalho, taxa de aceite, recusas, faltas e quem mais trabalhou." },
+              { icone: UsersRound, titulo: "Equipe no painel", texto: "Convide quem opera com você: administrador, financeiro ou operacional, cada um com seu acesso." },
+              { icone: ShieldCheck, titulo: "Dados protegidos", texto: "Consentimento LGPD no cadastro, documentos com validade e cada empresa só enxerga os seus dados." },
             ].map(({ icone: Icone, titulo, texto }) => (
               <div key={titulo} className="bg-arx-obsidian p-7">
                 <Icone size={20} className="text-arx-crew-soft" aria-hidden="true" />
