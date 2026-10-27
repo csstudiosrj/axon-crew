@@ -75,6 +75,8 @@ drop table if exists public.call_sheet_confirmacoes;
 
 -- Empresa: todos os membros leem; só administradores alteram.
 drop policy if exists companies_own on public.companies;
+drop policy if exists companies_select on public.companies;
+drop policy if exists companies_update on public.companies;
 create policy companies_select on public.companies for select using (id = get_company_id());
 create policy companies_update on public.companies for update
   using (id = get_company_id() and get_role() in ('admin', 'super_admin'))

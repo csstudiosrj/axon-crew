@@ -6,17 +6,22 @@
 -- A troca de plano é feita pela ARXUM (SQL editor / painel do Supabase);
 -- o usuário da empresa não consegue alterar o próprio plano.
 
-alter table public.companies
-  add column if not exists plano text not null default 'gratis',
-  add column if not exists plano_atualizado_em timestamptz;
+-- Empresas que já existiam antes dos planos entram no Profissional.
+-- (Só na primeira execução: rodar de novo não mexe em quem está no Grátis.)
+do $$
+begin
+  if not exists (select 1 from information_schema.columns
+                  where table_schema = 'public' and table_name = 'companies' and column_name = 'plano') then
+    alter table public.companies add column plano text not null default 'gratis';
+    update public.companies set plano = 'profissional';
+  end if;
+end $$;
+
+alter table public.companies add column if not exists plano_atualizado_em timestamptz;
 
 alter table public.companies drop constraint if exists companies_plano_check;
 alter table public.companies add constraint companies_plano_check
   check (plano in ('gratis', 'essencial', 'profissional', 'empresa'));
-
--- Empresas que já existiam antes dos planos entram no Profissional.
-update public.companies set plano = 'profissional', plano_atualizado_em = now()
- where plano = 'gratis' and created_at < now() - interval '1 minute';
 
 create or replace function public.limite_plano(p_plano text, p_recurso text)
 returns integer language sql immutable as $$
