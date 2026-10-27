@@ -6,10 +6,10 @@ import { Copy } from "lucide-react";
 import { pixCopiaECola } from "../../lib/pix";
 
 // QR code e "copia e cola" para pagar um profissional no app do banco.
-export default function PixPagamento({ chave, nome, valor, identificador, aoCopiar }: {
-  chave: string; nome: string; valor: number; identificador?: string; aoCopiar?: () => void;
+export default function PixPagamento({ chave, nome, valor, cidade, identificador, aoCopiar }: {
+  chave: string; nome: string; valor: number; cidade?: string; identificador?: string; aoCopiar?: () => void;
 }) {
-  const codigo = pixCopiaECola({ chave, nome, valor, identificador });
+  const codigo = pixCopiaECola({ chave, nome, valor, cidade, identificador });
   const [qr, setQr] = useState("");
 
   useEffect(() => {
