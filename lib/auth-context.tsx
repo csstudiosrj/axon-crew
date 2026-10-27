@@ -64,7 +64,15 @@ async function carregar(): Promise<Resultado> {
 
   if (!p) return { tipo: "redirecionar", para: "/login?erro=sem-empresa" };
 
-  const { data: c } = await supabase.from("companies").select("*").eq("id", p.company_id).single();
+  const { data: c } = await supabase.from("companies").select("*").eq("id", p.company_id).maybeSingle();
+  // Empresa suspensa pela ARXUM: as regras do banco escondem os dados dela.
+  if (!c) {
+    const { data: suspensa } = await supabase.rpc("minha_empresa_suspensa");
+    if (suspensa) {
+      await supabase.auth.signOut();
+      return { tipo: "redirecionar", para: "/login?erro=suspensa" };
+    }
+  }
   return { tipo: "ok", profile: p, company: c };
 }
 
