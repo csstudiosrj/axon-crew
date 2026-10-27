@@ -25,7 +25,9 @@ function LoginForm() {
   const [erro, setErro]         = useState(
     params.get("erro") === "sem-empresa"
       ? "Não encontramos a empresa ligada a esta conta. Fale com o suporte."
-      : ""
+      : params.get("erro") === "suspensa"
+        ? "O acesso desta empresa está suspenso. Fale com a ARXUM pelo WhatsApp (21) 96711-9815."
+        : ""
   );
   const [aviso, setAviso]       = useState(
     params.get("confirmado") ? "E-mail confirmado! Entre para acessar o painel." : ""
@@ -47,7 +49,9 @@ function LoginForm() {
       );
       setLoading(false);
     } else {
-      router.push("/freelas");
+      // Volta para a página que pediu o login (só caminhos internos).
+      const destino = params.get("next");
+      router.push(destino && destino.startsWith("/") && !destino.startsWith("//") ? destino : "/freelas");
     }
   };
 
