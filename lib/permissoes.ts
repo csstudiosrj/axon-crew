@@ -1,12 +1,12 @@
 // O que cada papel enxerga no painel.
 //   admin        tudo
 //   financeiro   tudo menos Configurações
-//   operacional  escalas e base, sem Financeiro, Relatórios e Configurações
+//   operacional  escalas e base, sem Financeiro, Relatórios, Configurações e Assinatura
 export type Papel = "super_admin" | "admin" | "financeiro" | "operacional";
 
 const BLOQUEIOS: Record<string, string[]> = {
   financeiro: ["/configuracoes"],
-  operacional: ["/financeiro", "/relatorios", "/configuracoes"],
+  operacional: ["/financeiro", "/relatorios", "/configuracoes", "/assinatura"],
 };
 
 export function podeAcessar(papel: string | undefined, rota: string): boolean {

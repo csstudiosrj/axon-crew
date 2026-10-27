@@ -23,6 +23,7 @@ interface Company {
   especialidades: string[];
   segmento?: string | null;
   plano?: string | null;
+  suspensa?: boolean;
 }
 
 type Resultado =
@@ -65,12 +66,15 @@ async function carregar(): Promise<Resultado> {
   if (!p) return { tipo: "redirecionar", para: "/login?erro=sem-empresa" };
 
   const { data: c } = await supabase.from("companies").select("*").eq("id", p.company_id).maybeSingle();
-  // Empresa suspensa pela ARXUM: as regras do banco escondem os dados dela.
+  // Empresa suspensa pela ARXUM: as regras do banco escondem os dados dela,
+  // mas a equipe ainda acessa a assinatura (para regularizar) e o suporte.
   if (!c) {
-    const { data: suspensa } = await supabase.rpc("minha_empresa_suspensa");
-    if (suspensa) {
-      await supabase.auth.signOut();
-      return { tipo: "redirecionar", para: "/login?erro=suspensa" };
+    const { data: minha } = await supabase.rpc("minha_empresa");
+    if (minha?.suspensa) {
+      return {
+        tipo: "ok", profile: p,
+        company: { ...minha, slug: "", logo_url: null, primary_color: "#8b5cf6", whatsapp: null, especialidades: [], suspensa: true },
+      };
     }
   }
   return { tipo: "ok", profile: p, company: c };
@@ -109,7 +113,10 @@ export function useAuth() {
 
   const segmento: Segmento = getSegmento(company?.segmento);
 
-  return { companyId, profile, company, especialidades, segmento, termos: segmento.termos, papel: profile?.role, ready, signOut };
+  return {
+    companyId, profile, company, especialidades, segmento, termos: segmento.termos, papel: profile?.role,
+    suspensa: !!company?.suspensa, ready, signOut,
+  };
 }
 
 // Depois de salvar as Configurações, força recarregar a empresa.
