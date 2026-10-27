@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../lib/auth-context";
+import { BASE_PATH } from "../../lib/base-path";
 
 // =====================================================
 // PRESETS POR NICHO
@@ -161,7 +162,7 @@ export default function ConfiguracoesPage() {
   };
 
   const linkCaptacao = slug
-    ? `${typeof window !== "undefined" ? window.location.origin : ""}/cadastro/${slug}`
+    ? `${typeof window !== "undefined" ? window.location.origin : ""}${BASE_PATH}/cadastro/${slug}`
     : "— configure o slug para gerar o link";
 
   if (!ready || isLoading) {

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "./supabase";
 import { useRouter } from "next/navigation";
+import { BASE_PATH } from "./base-path";
 
 interface Profile {
   id: string;
@@ -36,11 +37,27 @@ export function useAuth() {
       if (!mounted) return;
       if (!session?.user) { router.push("/login"); return; }
 
-      const { data: p } = await supabase
-        .from("profiles").select("*").eq("id", session.user.id).single();
+      let { data: p } = await supabase
+        .from("profiles").select("*").eq("id", session.user.id).maybeSingle();
+
+      // Conta nova: a empresa é criada no primeiro acesso, com os dados
+      // informados em /criar-conta (guardados nos metadados do usuário).
+      if (!p) {
+        const meta = session.user.user_metadata ?? {};
+        if (meta.empresa_nome && meta.empresa_slug) {
+          const { error } = await supabase.rpc("criar_empresa", {
+            p_nome: meta.empresa_nome,
+            p_slug: meta.empresa_slug,
+          });
+          if (!error) {
+            ({ data: p } = await supabase
+              .from("profiles").select("*").eq("id", session.user.id).maybeSingle());
+          }
+        }
+      }
 
       if (!mounted) return;
-      if (!p) { router.push("/login"); return; }
+      if (!p) { router.push("/login?erro=sem-empresa"); return; }
 
       setProfile(p);
       setCompanyId(p.company_id);
@@ -64,7 +81,7 @@ export function useAuth() {
 
   const signOut = async () => {
     await supabase.auth.signOut();
-    window.location.href = "/login";
+    window.location.href = `${BASE_PATH}/login`;
   };
 
   return { companyId, profile, company, especialidades, ready, signOut };

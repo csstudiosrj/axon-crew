@@ -5,15 +5,20 @@ import {
   Users, CalendarDays, DollarSign, ClipboardList,
   Settings, LogOut, ChevronLeft, ChevronRight, Bell
 } from "lucide-react";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { BASE_PATH } from "@/lib/base-path";
+
+// Rotas abertas ao público: renderizadas sem a sidebar do sistema.
+const ROTAS_PUBLICAS = ["/login", "/criar-conta", "/cadastro", "/roteiro"];
 
 export default function SystemLayout({ children }: { children: React.ReactNode }) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const pathname = usePathname();
 
   const menuItems = [
-    { name: "Base de Freelas",  icon: Users,         path: "/" },
+    { name: "Base de Freelas",  icon: Users,         path: "/freelas" },
     { name: "Agenda & Jobs",    icon: CalendarDays,  path: "/agenda" },
     { name: "Financeiro & PIX", icon: DollarSign,    path: "/financeiro" },
     { name: "Call Sheets",      icon: ClipboardList, path: "/callsheets" },
@@ -22,11 +27,11 @@ export default function SystemLayout({ children }: { children: React.ReactNode }
 
   const signOut = async () => {
     await supabase.auth.signOut();
-    window.location.href = "/login";
+    window.location.href = `${BASE_PATH}/login`;
   };
 
   // Páginas públicas — sem layout, sem restrição de altura
-  if (pathname === "/login" || pathname.startsWith("/cadastro") || pathname.startsWith("/roteiro")) {
+  if (pathname === "/" || ROTAS_PUBLICAS.some((r) => pathname.startsWith(r))) {
     return <>{children}</>;
   }
 
@@ -66,7 +71,7 @@ export default function SystemLayout({ children }: { children: React.ReactNode }
           {menuItems.map((item) => {
             const isActive = pathname === item.path;
             return (
-              <a key={item.path} href={item.path} title={isCollapsed ? item.name : ""} style={{
+              <Link key={item.path} href={item.path} title={isCollapsed ? item.name : ""} style={{
                 display: "flex", alignItems: "center", gap: 12,
                 padding: "0.625rem 0.75rem", borderRadius: "0.5rem",
                 fontSize: "0.875rem", fontWeight: 500,
@@ -78,7 +83,7 @@ export default function SystemLayout({ children }: { children: React.ReactNode }
               }}>
                 <item.icon size={20} style={{ minWidth: 20 }} />
                 {!isCollapsed && <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.name}</span>}
-              </a>
+              </Link>
             );
           })}
         </nav>
