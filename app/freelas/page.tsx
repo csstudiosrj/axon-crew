@@ -8,11 +8,12 @@ import {
 } from "lucide-react";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../lib/auth-context";
+import { maiuscula, novo, artigo, de, primeiro, flex, nenhum, um } from "../../lib/segmentos";
 
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; border: string; dot: string }> = {
   disponivel:   { label: "Disponível",   color: "text-green-500",  bg: "bg-green-500/10",  border: "border-green-500/20",  dot: "bg-green-500" },
-  em_job:       { label: "Em Job",       color: "text-yellow-500", bg: "bg-yellow-500/10", border: "border-yellow-500/20", dot: "bg-yellow-500" },
+  em_job:       { label: "Ocupado",       color: "text-yellow-500", bg: "bg-yellow-500/10", border: "border-yellow-500/20", dot: "bg-yellow-500" },
   indisponivel: { label: "Indisponível", color: "text-red-500",    bg: "bg-red-500/10",    border: "border-red-500/20",    dot: "bg-red-500" },
 };
 
@@ -52,7 +53,8 @@ const FREELA_VAZIO: NovoFreela = {
 };
 
 export default function CrewDashboard() {
-  const { companyId, especialidades } = useAuth();
+  const { companyId, especialidades, termos } = useAuth();
+  const gJob = termos.generoJob;
 
   const [freelancers, setFreelancers] = useState<Freelancer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -134,7 +136,7 @@ export default function CrewDashboard() {
       setFreelancers([data[0] as Freelancer, ...freelancers]);
       setModalCadastro(false);
       setNovoFreela(FREELA_VAZIO);
-      mostrarToast("Freelancer cadastrado com sucesso!", "sucesso");
+      mostrarToast("Cadastro salvo na base!", "sucesso");
     }
   };
 
@@ -167,16 +169,16 @@ export default function CrewDashboard() {
     if (!error) {
       setFreelancers(freelancers.filter((f) => f.id !== modalDelete.id));
       setModalDelete(null);
-      mostrarToast("Freelancer removido da base", "sucesso");
+      mostrarToast("Removido da base", "sucesso");
     } else {
-      mostrarToast("Erro ao remover freelancer", "erro");
+      mostrarToast("Erro ao remover da base", "erro");
     }
   };
 
   const abrirWhatsapp = (freela: Freelancer) => {
     const primeiroNome = freela.nome.split(" ")[0];
     setMsgWhatsapp(
-      `Olá ${primeiroNome}, tudo bem?\n\nTemos um job de ${freela.especialidade} para os próximos dias.\n\nA diária base é R$ ${freela.diaria},00. Você tem disponibilidade?\n\nAguardamos seu retorno!`
+      `Olá ${primeiroNome}, tudo bem?\n\nTemos ${um(gJob)} ${termos.job} de ${freela.especialidade} para os próximos dias.\n\nO valor base é R$ ${freela.diaria},00. Você tem disponibilidade?\n\nAguardamos seu retorno!`
     );
     setModalWhatsapp(freela);
   };
@@ -215,14 +217,14 @@ export default function CrewDashboard() {
 
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-white">Banco de Talentos</h2>
-          <p className="text-sm text-gray-400 mt-1">Gerencie seus freelancers e dispare convites rápidos via WhatsApp.</p>
+          <h2 className="text-2xl font-bold text-white">Base de {maiuscula(termos.profissionais)}</h2>
+          <p className="text-sm text-gray-400 mt-1">Gerencie seus {termos.profissionais} e dispare convites rápidos via WhatsApp.</p>
         </div>
         <button
           onClick={() => setModalCadastro(true)}
-          className="bg-green-600 hover:bg-green-500 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 active:scale-95 flex items-center gap-2 shadow-lg shadow-green-900/20"
+          className="bg-violet-600 hover:bg-violet-500 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 active:scale-95 flex items-center gap-2 shadow-lg shadow-violet-900/20"
         >
-          <UserPlus size={18} /> Cadastrar Freela
+          <UserPlus size={18} /> Cadastrar {maiuscula(termos.profissional)}
         </button>
       </div>
 
@@ -237,7 +239,7 @@ export default function CrewDashboard() {
         </div>
         <div className="bg-[#121212] border border-[#222] p-6 rounded-xl flex items-center gap-4">
           <div className="p-3 bg-yellow-500/10 rounded-lg text-yellow-500"><Clock size={24} /></div>
-          <div><p className="text-sm text-gray-400 font-medium">Em Job Agora</p><p className="text-2xl font-bold text-white">{totalEmJob}</p></div>
+          <div><p className="text-sm text-gray-400 font-medium">Em {termos.job} agora</p><p className="text-2xl font-bold text-white">{totalEmJob}</p></div>
         </div>
       </div>
 
@@ -246,24 +248,24 @@ export default function CrewDashboard() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
           <input
             type="text" placeholder="Buscar por nome..."
-            className="w-full bg-[#121212] border border-[#222] rounded-lg py-2.5 pl-10 pr-4 text-sm text-gray-200 focus:outline-none focus:border-green-500"
+            className="w-full bg-[#121212] border border-[#222] rounded-lg py-2.5 pl-10 pr-4 text-sm text-gray-200 focus:outline-none focus:border-violet-500"
             value={busca} onChange={(e) => setBusca(e.target.value)}
           />
         </div>
         <select
-          className="bg-[#121212] border border-[#222] text-gray-300 text-sm rounded-lg py-2.5 px-4 focus:outline-none focus:border-green-500 cursor-pointer"
+          className="bg-[#121212] border border-[#222] text-gray-300 text-sm rounded-lg py-2.5 px-4 focus:outline-none focus:border-violet-500 cursor-pointer"
           value={filtroEspecialidade} onChange={(e) => setFiltroEspecialidade(e.target.value)}
         >
           <option value="todas">Todas as Especialidades</option>
           {especialidades.map((esp) => <option key={esp} value={esp}>{esp}</option>)}
         </select>
         <select
-          className="bg-[#121212] border border-[#222] text-gray-300 text-sm rounded-lg py-2.5 px-4 focus:outline-none focus:border-green-500 cursor-pointer"
+          className="bg-[#121212] border border-[#222] text-gray-300 text-sm rounded-lg py-2.5 px-4 focus:outline-none focus:border-violet-500 cursor-pointer"
           value={filtroStatus} onChange={(e) => setFiltroStatus(e.target.value)}
         >
           <option value="todos">Todos os Status</option>
           <option value="disponivel">Apenas Disponíveis</option>
-          <option value="em_job">Em Job Agora</option>
+          <option value="em_job">Em {termos.job} agora</option>
           <option value="indisponivel">Indisponíveis</option>
         </select>
         <button
@@ -282,7 +284,7 @@ export default function CrewDashboard() {
                 <th className="px-6 py-4 font-medium">Profissional</th>
                 <th className="px-6 py-4 font-medium">Especialidade</th>
                 <th className="px-6 py-4 font-medium">Avaliação</th>
-                {canViewFinancials && <th className="px-6 py-4 font-medium">Diária Base</th>}
+                {canViewFinancials && <th className="px-6 py-4 font-medium">Valor Base</th>}
                 {canViewFinancials && <th className="px-6 py-4 font-medium">Chave PIX</th>}
                 <th className="px-6 py-4 font-medium">Status</th>
                 <th className="px-6 py-4 font-medium text-right">Ações</th>
@@ -357,7 +359,7 @@ export default function CrewDashboard() {
                   </tr>
                 ))
               ) : (
-                <tr><td colSpan={7} className="px-6 py-12 text-center text-gray-500">Nenhum freelancer encontrado com os filtros atuais.</td></tr>
+                <tr><td colSpan={7} className="px-6 py-12 text-center text-gray-500">Nenhum cadastro encontrado com os filtros atuais.</td></tr>
               )}
             </tbody>
           </table>
@@ -370,7 +372,7 @@ export default function CrewDashboard() {
           <div className="bg-[#121212] border border-[#222] rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
             <div className="flex justify-between items-center p-5 border-b border-[#222]">
               <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                <UserPlus size={18} className="text-green-500" /> Novo Freelancer
+                <UserPlus size={18} className="text-violet-400" /> Novo Cadastro
               </h3>
               <button onClick={() => { setModalCadastro(false); setNovoFreela(FREELA_VAZIO); }} className="text-gray-500 hover:text-white"><X size={20} /></button>
             </div>
@@ -379,12 +381,12 @@ export default function CrewDashboard() {
                 <label className="block text-xs text-gray-400 mb-1">Nome Completo *</label>
                 <input required type="text" placeholder="Ex: João da Silva"
                   value={novoFreela.nome} onChange={(e) => setNovoFreela({ ...novoFreela, nome: e.target.value })}
-                  className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg p-2.5 text-sm text-white focus:border-green-500 focus:outline-none" />
+                  className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg p-2.5 text-sm text-white focus:border-violet-500 focus:outline-none" />
               </div>
               <div>
                 <label className="block text-xs text-gray-400 mb-1">Especialidade *</label>
                 <select required value={novoFreela.especialidade} onChange={(e) => setNovoFreela({ ...novoFreela, especialidade: e.target.value })}
-                  className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg p-2.5 text-sm text-white focus:border-green-500 focus:outline-none cursor-pointer">
+                  className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg p-2.5 text-sm text-white focus:border-violet-500 focus:outline-none cursor-pointer">
                   {especialidades.map((esp) => <option key={esp} value={esp}>{esp}</option>)}
                 </select>
               </div>
@@ -393,25 +395,25 @@ export default function CrewDashboard() {
                   <label className="block text-xs text-gray-400 mb-1">WhatsApp *</label>
                   <input required type="text" placeholder="(11) 99999-9999"
                     value={novoFreela.telefone} onChange={(e) => setNovoFreela({ ...novoFreela, telefone: formatarTelefone(e.target.value) })}
-                    maxLength={15} className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg p-2.5 text-sm text-white focus:border-green-500 focus:outline-none" />
+                    maxLength={15} className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg p-2.5 text-sm text-white focus:border-violet-500 focus:outline-none" />
                 </div>
                 <div>
-                  <label className="block text-xs text-gray-400 mb-1">Diária Base (R$) *</label>
+                  <label className="block text-xs text-gray-400 mb-1">Valor Base (R$) *</label>
                   <input required type="number" placeholder="350" min="1"
                     value={novoFreela.diaria} onChange={(e) => setNovoFreela({ ...novoFreela, diaria: e.target.value })}
-                    className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg p-2.5 text-sm text-white focus:border-green-500 focus:outline-none" />
+                    className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg p-2.5 text-sm text-white focus:border-violet-500 focus:outline-none" />
                 </div>
               </div>
               <div>
                 <label className="block text-xs text-gray-400 mb-1">Chave PIX <span className="text-gray-600">(opcional)</span></label>
                 <input type="text" placeholder="CPF, e-mail, telefone ou chave aleatória"
                   value={novoFreela.chave_pix} onChange={(e) => setNovoFreela({ ...novoFreela, chave_pix: e.target.value })}
-                  className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg p-2.5 text-sm text-white focus:border-green-500 focus:outline-none" />
+                  className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg p-2.5 text-sm text-white focus:border-violet-500 focus:outline-none" />
               </div>
               <p className="text-xs text-gray-600">* Campos obrigatórios</p>
               <div className="pt-2 flex justify-end gap-3">
                 <button type="button" onClick={() => { setModalCadastro(false); setNovoFreela(FREELA_VAZIO); }} className="px-4 py-2 text-sm text-gray-400 hover:text-white">Cancelar</button>
-                <button type="submit" className="bg-green-600 hover:bg-green-500 text-white px-6 py-2 rounded-lg text-sm font-medium transition-all duration-200 active:scale-95">Salvar na Base</button>
+                <button type="submit" className="bg-violet-600 hover:bg-violet-500 text-white px-6 py-2 rounded-lg text-sm font-medium transition-all duration-200 active:scale-95">Salvar na Base</button>
               </div>
             </form>
           </div>
@@ -451,14 +453,14 @@ export default function CrewDashboard() {
                 </div>
                 <div className="flex items-center gap-3 text-sm">
                   <DollarSign size={15} className="text-gray-500 shrink-0" />
-                  <div><p className="text-gray-500 text-xs">Diária Base</p><p className="text-gray-200">R$ {modalPerfil.diaria},00</p></div>
+                  <div><p className="text-gray-500 text-xs">Valor Base</p><p className="text-gray-200">R$ {modalPerfil.diaria},00</p></div>
                 </div>
                 <div className="flex items-center gap-3 text-sm">
                   <QrCode size={15} className="text-gray-500 shrink-0" />
                   <div>
                     <p className="text-gray-500 text-xs">Chave PIX</p>
                     {modalPerfil.chave_pix ? (
-                      <button onClick={() => copiarPix(modalPerfil.chave_pix)} className="text-green-400 hover:text-green-300 flex items-center gap-1 transition-colors">
+                      <button onClick={() => copiarPix(modalPerfil.chave_pix)} className="text-violet-400 hover:text-violet-300 flex items-center gap-1 transition-colors">
                         {modalPerfil.chave_pix} <Copy size={12} />
                       </button>
                     ) : (
@@ -492,7 +494,7 @@ export default function CrewDashboard() {
               </button>
               <button onClick={() => handleMudarStatus(modalStatus.id, "em_job")}
                 className="w-full py-3 rounded-lg border border-yellow-500/30 bg-yellow-500/10 text-yellow-500 font-medium hover:bg-yellow-500/20 transition-all duration-200 active:scale-95 flex items-center justify-center gap-2">
-                <Briefcase size={16} /> Em Job Agora
+                <Briefcase size={16} /> Em {termos.job} agora
               </button>
               <button onClick={() => handleMudarStatus(modalStatus.id, "indisponivel")}
                 className="w-full py-3 rounded-lg border border-red-500/30 bg-red-500/10 text-red-500 font-medium hover:bg-red-500/20 transition-all duration-200 active:scale-95 flex items-center justify-center gap-2">
@@ -532,7 +534,7 @@ export default function CrewDashboard() {
             <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-500/20">
               <AlertTriangle size={32} className="text-red-500" />
             </div>
-            <h3 className="text-lg font-bold text-white mb-2">Excluir Freelancer?</h3>
+            <h3 className="text-lg font-bold text-white mb-2">Excluir da Base?</h3>
             <p className="text-sm text-gray-400 mb-6">Tem certeza que deseja remover <strong className="text-white">{modalDelete.nome}</strong> da sua base? Esta ação não pode ser desfeita.</p>
             <div className="flex gap-3">
               <button onClick={() => setModalDelete(null)} className="flex-1 py-2.5 rounded-lg border border-[#333] text-gray-300 hover:bg-[#1a1a1a]">Cancelar</button>
@@ -547,28 +549,28 @@ export default function CrewDashboard() {
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-[#121212] border border-[#222] rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
             <div className="flex justify-between items-center p-5 border-b border-[#222]">
-              <h3 className="text-lg font-bold text-white flex items-center gap-2"><Filter size={18} className="text-green-500" /> Filtros Avançados</h3>
+              <h3 className="text-lg font-bold text-white flex items-center gap-2"><Filter size={18} className="text-violet-400" /> Filtros Avançados</h3>
               <button onClick={() => setModalFiltros(false)} className="text-gray-500 hover:text-white"><X size={20} /></button>
             </div>
             <div className="p-5 space-y-6">
               <div>
-                <label className="block text-sm text-gray-400 mb-3">Diária Máxima: <span className="text-white font-medium">R$ {filtrosAvancados.precoMax}</span></label>
+                <label className="block text-sm text-gray-400 mb-3">Valor Máximo: <span className="text-white font-medium">R$ {filtrosAvancados.precoMax}</span></label>
                 <input type="range" min="100" max="2000" step="50" value={filtrosAvancados.precoMax}
                   onChange={(e) => setFiltrosAvancados({ ...filtrosAvancados, precoMax: Number(e.target.value) })}
-                  className="w-full accent-green-500" />
+                  className="w-full accent-violet-500" />
                 <div className="flex justify-between text-xs text-gray-600 mt-1"><span>R$ 100</span><span>R$ 2.000</span></div>
               </div>
               <div>
                 <label className="block text-sm text-gray-400 mb-3">Avaliação Mínima: <span className="text-white font-medium">{filtrosAvancados.avaliacaoMin} estrelas</span></label>
                 <input type="range" min="0" max="5" step="0.5" value={filtrosAvancados.avaliacaoMin}
                   onChange={(e) => setFiltrosAvancados({ ...filtrosAvancados, avaliacaoMin: Number(e.target.value) })}
-                  className="w-full accent-green-500" />
+                  className="w-full accent-violet-500" />
                 <div className="flex justify-between text-xs text-gray-600 mt-1"><span>Qualquer</span><span>5 estrelas</span></div>
               </div>
             </div>
             <div className="p-5 border-t border-[#222] flex justify-between">
               <button onClick={() => setFiltrosAvancados({ precoMax: 2000, avaliacaoMin: 0 })} className="text-sm text-gray-500 hover:text-white">Resetar filtros</button>
-              <button onClick={() => setModalFiltros(false)} className="bg-green-600 hover:bg-green-500 text-white px-6 py-2 rounded-lg text-sm font-medium transition-all duration-200 active:scale-95">Aplicar Filtros</button>
+              <button onClick={() => setModalFiltros(false)} className="bg-violet-600 hover:bg-violet-500 text-white px-6 py-2 rounded-lg text-sm font-medium transition-all duration-200 active:scale-95">Aplicar Filtros</button>
             </div>
           </div>
         </div>

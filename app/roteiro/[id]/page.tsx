@@ -52,7 +52,7 @@ export default function RoteiroPage() {
     // Busca o call sheet pelo ID
     const { data: cs, error: csErr } = await supabase
       .from("call_sheets")
-      .select("*, companies(name, logo_url, primary_color), eventos(titulo, data, horario_inicio, local)")
+      .select("*, companies(*), eventos(titulo, data, horario_inicio, local)")
       .eq("id", id)
       .single();
 
@@ -110,7 +110,7 @@ export default function RoteiroPage() {
     return `${dia}/${mes}/${ano}`;
   };
 
-  const cor = company?.primary_color ?? "#22c55e";
+  const cor = company?.primary_color ?? "#8b5cf6";
 
   if (isLoading) return (
     <div style={{ minHeight: "100vh", background: "#0a0a0a", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -122,8 +122,8 @@ export default function RoteiroPage() {
     <div style={{ minHeight: "100vh", background: "#0a0a0a", display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }}>
       <div style={{ textAlign: "center" }}>
         <AlertCircle size={48} color="#444" style={{ margin: "0 auto 1rem" }} />
-        <h1 style={{ color: "#fff", fontSize: "1.25rem", fontWeight: 700, marginBottom: "0.5rem" }}>Roteiro não encontrado</h1>
-        <p style={{ color: "#666", fontSize: "0.875rem" }}>Este link é inválido ou o roteiro foi despublicado.</p>
+        <h1 style={{ color: "#fff", fontSize: "1.25rem", fontWeight: 700, marginBottom: "0.5rem" }}>Link não encontrado</h1>
+        <p style={{ color: "#666", fontSize: "0.875rem" }}>Este link é inválido ou foi despublicado pela empresa.</p>
       </div>
     </div>
   );

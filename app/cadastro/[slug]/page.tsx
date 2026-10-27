@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { supabase } from "../../../lib/supabase";
 import { useParams } from "next/navigation";
+import { getSegmento, maiuscula, um } from "../../../lib/segmentos";
 
 interface Company {
   id: string;
@@ -14,6 +15,7 @@ interface Company {
   logo_url: string | null;
   primary_color: string;
   especialidades: string[];
+  segmento?: string | null;
 }
 
 interface FormData {
@@ -67,7 +69,7 @@ export default function CadastroPublicoPage() {
   const carregarEmpresa = async () => {
     const { data, error } = await supabase
       .from("companies")
-      .select("id, name, logo_url, primary_color, especialidades")
+      .select("*")
       .eq("slug", slug)
       .single();
 
@@ -82,7 +84,8 @@ export default function CadastroPublicoPage() {
     setIsLoading(false);
   };
 
-  const cor = company?.primary_color ?? "#22c55e";
+  const cor = company?.primary_color ?? "#8b5cf6";
+  const termos = getSegmento(company?.segmento).termos;
 
   const validarStep1 = () => {
     if (!form.nome.trim()) { setErro("Nome completo é obrigatório"); return false; }
@@ -175,7 +178,7 @@ export default function CadastroPublicoPage() {
           <h1 style={{ color: "#fff", fontSize: "1.5rem", fontWeight: 700, marginBottom: "0.5rem" }}>Cadastro Enviado!</h1>
           <p style={{ color: "#999", fontSize: "0.875rem" }}>
             Seu cadastro foi recebido por <strong style={{ color: "#fff" }}>{company.name}</strong>.
-            Entraremos em contato pelo WhatsApp quando houver um job disponível.
+            Entraremos em contato pelo WhatsApp quando houver {um(termos.generoJob)} {termos.job} disponível.
           </p>
         </div>
       </div>
@@ -197,7 +200,7 @@ export default function CadastroPublicoPage() {
               </div>
             )}
             <h1 style={{ color: "#fff", fontSize: "1.25rem", fontWeight: 700 }}>{company.name}</h1>
-            <p style={{ color: "#999", fontSize: "0.875rem", marginTop: "0.25rem" }}>Cadastro de Freelancer</p>
+            <p style={{ color: "#999", fontSize: "0.875rem", marginTop: "0.25rem" }}>Cadastro de {maiuscula(termos.profissional)}</p>
           </div>
 
           {/* Steps */}
@@ -268,7 +271,7 @@ export default function CadastroPublicoPage() {
                   </select>
                 </div>
                 <div>
-                  <label style={{ display: "block", fontSize: "0.75rem", color: "#999", marginBottom: "0.25rem" }}>Valor da Diária Base (R$) *</label>
+                  <label style={{ display: "block", fontSize: "0.75rem", color: "#999", marginBottom: "0.25rem" }}>Valor base (R$) *</label>
                   <input type="number" min="1" value={form.diaria} onChange={e => setForm({ ...form, diaria: e.target.value })}
                     placeholder="Ex: 350"
                     style={{ width: "100%", background: "#0a0a0a", border: "1px solid #333", borderRadius: "0.5rem", padding: "0.75rem", fontSize: "0.875rem", color: "#fff", outline: "none", boxSizing: "border-box" }} />
@@ -291,7 +294,7 @@ export default function CadastroPublicoPage() {
                   { label: "CPF", value: form.cpf },
                   { label: "E-mail", value: form.email || "Não informado" },
                   { label: "Especialidade", value: form.especialidade },
-                  { label: "Diária Base", value: `R$ ${form.diaria},00` },
+                  { label: "Valor base", value: `R$ ${form.diaria},00` },
                   { label: "Chave PIX", value: form.chave_pix || "Não informada" },
                 ].map(item => (
                   <div key={item.label} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#0a0a0a", border: "1px solid #222", borderRadius: "0.5rem", padding: "0.625rem 1rem" }}>

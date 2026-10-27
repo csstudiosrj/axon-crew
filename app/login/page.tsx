@@ -92,7 +92,7 @@ function LoginForm() {
           )}
 
           <button type="submit" disabled={loading}
-            className="flex w-full items-center justify-center gap-2 rounded-lg bg-arx-crew py-3.5 text-[15px] font-semibold text-white transition-colors hover:bg-[#8b5cf6] disabled:opacity-60">
+            className="flex w-full items-center justify-center gap-2 rounded-lg bg-arx-crew-strong py-3.5 text-[15px] font-semibold text-white transition-colors hover:bg-arx-crew disabled:opacity-60">
             <LogIn size={17} />
             {loading ? "Entrando..." : "Entrar"}
           </button>

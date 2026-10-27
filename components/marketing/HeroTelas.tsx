@@ -5,8 +5,8 @@ import { JanelaNavegador } from "./TelaFrame";
 
 const TELAS = [
   { id: "agenda", label: "Agenda", src: "/landing/tela-agenda.webp", alt: "Tela Agenda & Jobs: lista de eventos com a escala de cada um e alertas de equipe incompleta" },
-  { id: "freelas", label: "Freelas", src: "/landing/tela-freelas.webp", alt: "Tela Base de Freelas: lista de freelancers com especialidade, avaliação, diária, chave PIX e status" },
-  { id: "callsheet", label: "Call sheet", src: "/landing/tela-callsheets.webp", alt: "Tela Call Sheets: roteiro publicado com quem já confirmou presença e quem está aguardando" },
+  { id: "freelas", label: "Equipe", src: "/landing/tela-freelas.webp", alt: "Tela Base de Freelas: lista de freelancers com especialidade, avaliação, diária, chave PIX e status" },
+  { id: "callsheet", label: "Escala", src: "/landing/tela-callsheets.webp", alt: "Tela Call Sheets: roteiro publicado com quem já confirmou presença e quem está aguardando" },
   { id: "financeiro", label: "Financeiro", src: "/landing/tela-financeiro.webp", alt: "Tela Financeiro & PIX: valores a pagar, pagos e atrasados por freelancer e evento" },
 ];
 

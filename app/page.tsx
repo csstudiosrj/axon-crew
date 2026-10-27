@@ -3,22 +3,20 @@ import {
   Users, CalendarDays, ClipboardList, Wallet, Palette, Link2,
   MessageCircle, AlertTriangle, Check, ArrowRight,
 } from "lucide-react";
-import CrewLogo, { CrewMark } from "../components/marketing/CrewLogo";
+import CrewLogo, { CrewMark, CrewWordmark } from "../components/marketing/CrewLogo";
 import HeroTelas from "../components/marketing/HeroTelas";
+import SegmentosDemo from "../components/marketing/SegmentosDemo";
+import { SEGMENTOS } from "../lib/segmentos";
 import { JanelaNavegador, JanelaCelular } from "../components/marketing/TelaFrame";
 
 const WHATSAPP = "5521967119815";
 
-const PUBLICO = [
-  "Produtoras de eventos", "Locadoras de som e luz", "Casas de show",
-  "Produção cultural", "Feiras e congressos", "Cerimonial e formaturas",
-  "Promotoras e trade",
-];
+const PUBLICO = SEGMENTOS.filter((s) => s.id !== "outro").map((s) => s.nome);
 
 const ETAPAS = [
-  { n: "01", titulo: "Monte sua base", texto: "Cadastre seus freelancers ou mande o link da sua empresa para que eles se cadastrem sozinhos, com especialidade, diária e chave PIX." },
-  { n: "02", titulo: "Crie o job", texto: "Data, horário, local e as vagas que o evento precisa: quantos técnicos, roadies e produtores, com o cachê de cada função." },
-  { n: "03", titulo: "Escale e confirme", texto: "Escolha quem vai em cada vaga, publique o call sheet e dispare pelo WhatsApp. Cada pessoa confirma presença pelo link." },
+  { n: "01", titulo: "Monte sua base", texto: "Cadastre seus profissionais ou mande o link da sua empresa para que eles se cadastrem sozinhos, com função, valor e chave PIX." },
+  { n: "02", titulo: "Crie o trabalho", texto: "Evento, plantão, turno, ação ou obra: data, horário, local e quantas pessoas de cada função, com o valor de cada vaga." },
+  { n: "03", titulo: "Escale e confirme", texto: "Escolha quem vai em cada vaga, publique a escala e envie pelo WhatsApp. Cada pessoa confirma presença pelo link." },
   { n: "04", titulo: "Pague e acompanhe", texto: "O financeiro já sabe quem trabalhou e quanto recebe. Marque como pago e veja o que está pendente ou atrasado." },
 ];
 
@@ -79,12 +77,12 @@ export default function CrewHome() {
           <nav aria-label="Principal" className="hidden items-center gap-8 md:flex">
             <a href="#funcionalidades" className="text-[14px] text-arx-mist hover:text-white">Funcionalidades</a>
             <a href="#como-funciona" className="text-[14px] text-arx-mist hover:text-white">Como funciona</a>
-            <a href="#para-quem-e" className="text-[14px] text-arx-mist hover:text-white">Para quem é</a>
+            <a href="#segmentos" className="text-[14px] text-arx-mist hover:text-white">Segmentos</a>
             <a href="#contato" className="text-[14px] text-arx-mist hover:text-white">Contato</a>
           </nav>
-          <div className="flex items-center gap-3 sm:gap-5">
-            <Link href="/login" className="text-[14px] text-arx-mist hover:text-white">Entrar</Link>
-            <Link href="/criar-conta" className="whitespace-nowrap rounded-lg bg-arx-crew px-3.5 py-2 text-[14px] font-semibold text-white transition-colors hover:bg-[#8b5cf6] sm:px-4">
+          <div className="flex items-center gap-2.5 sm:gap-5">
+            <Link href="/login" className="text-[13px] text-arx-mist hover:text-white sm:text-[14px]">Entrar</Link>
+            <Link href="/criar-conta" className="whitespace-nowrap rounded-lg bg-arx-crew-strong px-3 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-arx-crew sm:px-4 sm:text-[14px]">
               <span className="sm:hidden">Criar conta</span>
               <span className="hidden sm:inline">Cadastrar empresa</span>
             </Link>
@@ -99,16 +97,17 @@ export default function CrewHome() {
           <div aria-hidden="true" className="pointer-events-none absolute left-1/2 top-[55%] h-[520px] w-[900px] -translate-x-1/2 rounded-full bg-arx-crew/10 blur-[120px]" />
           <div className="relative mx-auto w-full max-w-[1200px] px-4 pb-20 pt-16 sm:px-8 sm:pb-28 sm:pt-24">
             <div className="max-w-[860px]">
-              <Rotulo>Gestão de equipes e freelancers para eventos</Rotulo>
+              <Rotulo>Gestão de freelancers para qualquer segmento</Rotulo>
               <h1 className="mt-6 text-[44px] font-medium leading-[1.02] tracking-[-0.035em] text-white sm:text-[68px] lg:text-[76px]">
-                Da escalação ao PIX, a equipe do evento em um só lugar.
+                Sua equipe freelancer, sem planilha.
               </h1>
               <p className="mt-7 max-w-[620px] text-[17px] leading-relaxed text-arx-mist sm:text-[19px]">
-                Banco de freelancers, agenda de jobs, escala por função, call sheet com confirmação
-                pelo WhatsApp e controle de pagamentos — sem planilha paralela e sem grupo bagunçado.
+                Banco de talentos, escala por função, confirmação pelo WhatsApp e controle de pagamentos
+                para quem contrata por diária, plantão, turno ou job — de produtoras de eventos a
+                clínicas, obras, bares e agências de promoção.
               </p>
               <div className="mt-10 flex flex-wrap gap-3">
-                <Link href="/criar-conta" className="inline-flex items-center gap-2 rounded-lg bg-arx-crew px-5 py-3.5 text-[15px] font-semibold text-white transition-colors hover:bg-[#8b5cf6]">
+                <Link href="/criar-conta" className="inline-flex items-center gap-2 rounded-lg bg-arx-crew-strong px-5 py-3.5 text-[15px] font-semibold text-white transition-colors hover:bg-arx-crew">
                   Cadastrar minha empresa <ArrowRight size={17} />
                 </Link>
                 <a href="#funcionalidades" className="rounded-lg border border-white/10 px-5 py-3.5 text-[15px] font-medium text-white transition-colors hover:bg-white/5">
@@ -136,6 +135,21 @@ export default function CrewHome() {
           </div>
         </section>
 
+        {/* Segmentos */}
+        <Secao id="segmentos">
+          <Rotulo>Segmentos</Rotulo>
+          <h2 className="mt-4 max-w-[760px] text-[34px] font-medium leading-[1.1] tracking-[-0.02em] text-white sm:text-[44px]">
+            O sistema fala a língua do seu segmento.
+          </h2>
+          <p className="mt-5 max-w-[640px] text-[16px] leading-relaxed text-arx-mist">
+            Na clínica é plantão, no bar é turno, na agência é ação, na produtora é evento. Escolha o
+            seu segmento no cadastro e o Crew já chega com os termos e as funções do seu dia a dia.
+          </p>
+          <div className="mt-12">
+            <SegmentosDemo />
+          </div>
+        </Secao>
+
         {/* Como funciona */}
         <Secao id="como-funciona">
           <Rotulo>Como funciona</Rotulo>
@@ -143,7 +157,7 @@ export default function CrewHome() {
             Quatro etapas. Uma plataforma.
           </h2>
           <p className="mt-5 max-w-[640px] text-[16px] leading-relaxed text-arx-mist">
-            Cada etapa alimenta a seguinte: quem você escala vira call sheet, quem confirma
+            Cada etapa alimenta a seguinte: quem você escala vai para a escala, quem confirma
             vira pagamento. Nada se perde entre planilha, e-mail e WhatsApp.
           </p>
           <div className="mt-12 grid overflow-hidden rounded-xl border border-white/10 sm:grid-cols-2 lg:grid-cols-4">
@@ -168,37 +182,37 @@ export default function CrewHome() {
           </p>
 
           <div className="mt-20 space-y-28 sm:space-y-36">
-            <Recurso rotulo="Base de freelas" icone={Users}
+            <Recurso rotulo="Banco de talentos" icone={Users}
               titulo="Sua base de talentos, organizada."
-              texto="Todos os freelancers da empresa num só lugar, com especialidade, diária, chave PIX, avaliação e se estão disponíveis ou em outro job."
+              texto="Todos os profissionais da empresa num só lugar, com função, valor da diária, chave PIX, avaliação e se estão disponíveis ou em outro trabalho."
               itens={[
-                "Busca e filtros por especialidade, status, valor da diária e avaliação.",
+                "Busca e filtros por função, status, valor e avaliação.",
                 "Convite pelo WhatsApp com um clique, com mensagem pronta.",
                 "Avaliação de 0 a 5 depois de cada trabalho.",
               ]}>
-              <JanelaNavegador src="/landing/tela-freelas.webp" alt="Tela Base de Freelas com a lista de freelancers" />
+              <JanelaNavegador src="/landing/tela-freelas.webp" alt="Tela da base com a lista de profissionais" />
             </Recurso>
 
             <Recurso rotulo="Link de cadastro" icone={Link2} inverter
-              titulo="O freelancer se cadastra sozinho."
+              titulo="O profissional se cadastra sozinho."
               texto="Sua empresa ganha um link próprio, com o seu nome e a sua cor. É só mandar no grupo ou colocar na bio: quem preencher entra direto na sua base."
               itens={[
-                "Nome, WhatsApp, CPF, especialidade, diária e chave PIX.",
+                "Nome, WhatsApp, CPF, função, valor e chave PIX.",
                 "CPF repetido é barrado, para a base não duplicar.",
                 "Pensado para o celular, em três passos.",
               ]}>
-              <JanelaCelular src="/landing/mobile-cadastro.webp" alt="Formulário de cadastro de freelancer no celular" />
+              <JanelaCelular src="/landing/mobile-cadastro.webp" alt="Formulário de cadastro de profissional no celular" />
             </Recurso>
 
-            <Recurso rotulo="Agenda & jobs" icone={CalendarDays}
-              titulo="Cada job com as vagas que ele precisa."
-              texto="Crie o evento, defina quantas pessoas de cada função ele exige e o cachê de cada vaga. A agenda mostra o mês inteiro e avisa o que está faltando."
+            <Recurso rotulo="Agenda" icone={CalendarDays}
+              titulo="Cada trabalho com as vagas que ele precisa."
+              texto="Crie o evento, o plantão ou o turno, defina quantas pessoas de cada função ele exige e o valor de cada vaga. A agenda mostra o mês inteiro e avisa o que está faltando."
               itens={[
-                "Alerta de equipe incompleta antes do dia do evento.",
-                "Alerta de conflito quando a mesma pessoa está em dois jobs no mesmo horário.",
-                "Status do job: orçamento, confirmado, montagem e encerrado.",
+                "Alerta de equipe incompleta antes do dia.",
+                "Alerta de conflito quando a mesma pessoa está em dois trabalhos no mesmo horário.",
+                "Status do trabalho: orçamento, confirmado, em andamento e encerrado.",
               ]}>
-              <JanelaNavegador src="/landing/tela-agenda-calendario.webp" alt="Agenda em visão de calendário com eventos do mês e alertas de escala" />
+              <JanelaNavegador src="/landing/tela-agenda-calendario.webp" alt="Agenda em visão de calendário com os trabalhos do mês e alertas de escala" />
             </Recurso>
           </div>
         </Secao>
@@ -209,29 +223,29 @@ export default function CrewHome() {
             <div>
               <div className="flex items-center gap-2.5">
                 <ClipboardList size={16} className="text-arx-crew-soft" aria-hidden="true" />
-                <Rotulo>Call sheet</Rotulo>
+                <Rotulo>Escala e confirmação</Rotulo>
               </div>
               <h3 className="mt-4 text-[30px] font-medium leading-[1.1] tracking-[-0.02em] text-white sm:text-[38px]">
                 Roteiro no WhatsApp. Confirmação na hora.
               </h3>
               <p className="mt-5 text-[16px] leading-relaxed text-arx-mist">
-                Publique o call sheet do evento e dispare o link para a equipe. Cada pessoa abre no
-                celular, vê data, horário e local e confirma presença. No painel, você acompanha quem
-                já confirmou e quem ainda falta.
+                Publique a escala (call sheet, briefing, ordem de serviço — o nome muda com o seu
+                segmento) e envie o link para a equipe. Cada pessoa abre no celular, vê data, horário e
+                local e confirma presença. No painel, você acompanha quem já confirmou e quem falta.
               </p>
               <Lista itens={[
                 "Mensagem de WhatsApp pronta para cada pessoa escalada.",
-                "Contagem de confirmados e aguardando por evento.",
+                "Contagem de confirmados e aguardando em cada escala.",
                 "Despublique quando quiser: o link deixa de funcionar.",
               ]} />
               <div className="mt-10">
-                <JanelaNavegador src="/landing/tela-callsheets.webp" alt="Tela Call Sheets com o roteiro publicado e o status de confirmação da equipe" />
+                <JanelaNavegador src="/landing/tela-callsheets.webp" alt="Tela da escala publicada com o status de confirmação da equipe" />
               </div>
             </div>
             <div className="flex flex-col items-center gap-4">
-              <JanelaCelular src="/landing/mobile-roteiro.webp" alt="Roteiro do evento aberto no celular do freelancer, com botão de confirmar presença" />
+              <JanelaCelular src="/landing/mobile-roteiro.webp" alt="Escala aberta no celular do profissional, com botão de confirmar presença" />
               <p className="flex items-center gap-2 text-[13px] text-arx-slate">
-                <MessageCircle size={14} aria-hidden="true" /> O que o freelancer vê no celular
+                <MessageCircle size={14} aria-hidden="true" /> O que o profissional vê no celular
               </p>
             </div>
           </div>
@@ -241,10 +255,10 @@ export default function CrewHome() {
           <div className="space-y-28 sm:space-y-36">
             <Recurso rotulo="Financeiro & PIX" icone={Wallet}
               titulo="Quem trabalhou, quanto recebe e o que já foi pago."
-              texto="Cada pessoa escalada vira um pagamento com o cachê da vaga. Você vê o total a pagar, o que já foi quitado e o que passou da data do evento sem pagamento."
+              texto="Cada pessoa escalada vira um pagamento com o valor da vaga. Você vê o total a pagar, o que já foi quitado e o que passou da data sem pagamento."
               itens={[
                 "Pagamentos atrasados destacados automaticamente.",
-                "Chave PIX de cada freelancer ao lado do valor.",
+                "Chave PIX de cada profissional ao lado do valor.",
                 "Exportação em CSV para a contabilidade.",
               ]}>
               <JanelaNavegador src="/landing/tela-financeiro.webp" alt="Tela Financeiro & PIX com totais a pagar, pagos e atrasados" />
@@ -252,10 +266,10 @@ export default function CrewHome() {
 
             <Recurso rotulo="Sua marca" icone={Palette} inverter
               titulo="Com a cara da sua empresa."
-              texto="O link de cadastro e o roteiro que o freelancer recebe aparecem com o nome, o logo e a cor da sua empresa. As funções também são suas."
+              texto="O link de cadastro e a escala que o profissional recebe aparecem com o nome, o logo e a cor da sua empresa. As funções também são suas."
               itens={[
                 "Cor principal e logo nas páginas públicas.",
-                "Lista de especialidades editável, com modelos prontos por tipo de negócio.",
+                "Funções editáveis, com listas prontas para cada segmento.",
                 "Endereço do link escolhido por você.",
               ]}>
               <JanelaNavegador src="/landing/tela-configuracoes.webp" alt="Tela Configurações com dados da empresa, cor principal e link de captação" />
@@ -267,7 +281,7 @@ export default function CrewHome() {
         <Secao>
           <div className="grid gap-px overflow-hidden rounded-xl border border-white/10 bg-white/10 sm:grid-cols-3">
             {[
-              { icone: AlertTriangle, titulo: "Menos furo de equipe", texto: "Os alertas mostram vagas abertas e conflitos de horário antes do evento, não no dia." },
+              { icone: AlertTriangle, titulo: "Menos furo de equipe", texto: "Os alertas mostram vagas abertas e conflitos de horário com antecedência, não na hora." },
               { icone: MessageCircle, titulo: "Tudo pelo WhatsApp", texto: "Convite, roteiro e confirmação usam o app que a sua equipe já tem no bolso." },
               { icone: Check, titulo: "Pagamento sem esquecer ninguém", texto: "Quem foi escalado aparece no financeiro com o valor certo até ser marcado como pago." },
             ].map(({ icone: Icone, titulo, texto }) => (
@@ -284,13 +298,13 @@ export default function CrewHome() {
         <section className="border-b border-arx-line">
           <div className="mx-auto w-full max-w-[1200px] px-4 py-24 text-center sm:px-8 sm:py-32">
             <h2 className="mx-auto max-w-[760px] text-[34px] font-medium leading-[1.1] tracking-[-0.02em] text-white sm:text-[48px]">
-              Seu próximo evento merece uma equipe que chega confirmada.
+              Sua próxima escala merece uma equipe que chega confirmada.
             </h2>
             <p className="mx-auto mt-6 max-w-[520px] text-[16px] leading-relaxed text-arx-mist">
-              Cadastre a empresa, mande o link para os seus freelancers e monte o primeiro job hoje.
+              Cadastre a empresa, mande o link para os seus profissionais e monte a primeira escala hoje.
             </p>
             <div className="mt-10 flex flex-wrap justify-center gap-3">
-              <Link href="/criar-conta" className="inline-flex items-center gap-2 rounded-lg bg-arx-crew px-5 py-3.5 text-[15px] font-semibold text-white transition-colors hover:bg-[#8b5cf6]">
+              <Link href="/criar-conta" className="inline-flex items-center gap-2 rounded-lg bg-arx-crew-strong px-5 py-3.5 text-[15px] font-semibold text-white transition-colors hover:bg-arx-crew">
                 Cadastrar minha empresa <ArrowRight size={17} />
               </Link>
               <a href={`https://wa.me/${WHATSAPP}`} target="_blank" rel="noopener noreferrer"
@@ -311,12 +325,10 @@ export default function CrewHome() {
           <div>
             <div className="flex items-center gap-2.5">
               <CrewMark />
-              <span className="font-logo text-[19px] font-extrabold leading-none tracking-[-0.03em]">
-                <span className="text-arx-crew-soft">ARXUM</span> <span className="text-white">Crew</span>
-              </span>
+              <CrewWordmark />
             </div>
             <p className="mt-5 text-[14px] leading-relaxed text-arx-mist">
-              Gestão de equipes e freelancers para eventos: base de talentos, escala, call sheet e pagamentos em um só lugar.
+              Gestão de freelancers para qualquer segmento: banco de talentos, escalas, confirmação e pagamentos em um só lugar.
             </p>
           </div>
           <div>
@@ -339,9 +351,8 @@ export default function CrewHome() {
             <ul className="mt-5 space-y-3 text-[14px]">
               {[
                 ["Fest", "https://www.arxum.com.br/fest", "#d4af37"],
+                ["Edu", "https://www.arxum.com.br/edu", "#0d9488"],
                 ["Studio", "https://www.arxum.com.br/studio", "#3b82f6"],
-                ["Edu", "https://www.arxum.com.br/edu", "#9aabbd"],
-                ["Calc", "https://www.arxum.com.br/calculadoras", "#22c55e"],
                 ["Suite", "https://www.arxum.com.br/suite", "#ef4444"],
               ].map(([nome, href, cor]) => (
                 <li key={nome}>

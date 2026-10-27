@@ -7,6 +7,7 @@ import { AlertCircle, CheckCircle2, Eye, EyeOff, Loader2, MailCheck } from "luci
 import { supabase } from "../../lib/supabase";
 import { BASE_PATH } from "../../lib/base-path";
 import CrewLogo from "../../components/marketing/CrewLogo";
+import { SEGMENTOS } from "../../lib/segmentos";
 
 const gerarSlug = (nome: string) =>
   nome
@@ -25,6 +26,7 @@ export default function CriarContaPage() {
   const [empresa, setEmpresa]       = useState("");
   const [slug, setSlug]             = useState("");
   const [slugEditado, setSlugEditado] = useState(false);
+  const [segmento, setSegmento]     = useState("");
   const [email, setEmail]           = useState("");
   const [senha, setSenha]           = useState("");
   const [verSenha, setVerSenha]     = useState(false);
@@ -44,6 +46,7 @@ export default function CriarContaPage() {
 
     const slugFinal = gerarSlug(slug);
     if (empresa.trim().length < 2) { setErro("Informe o nome da empresa."); return; }
+    if (!segmento) { setErro("Escolha o segmento da empresa."); return; }
     if (slugFinal.length < 3) { setErro("O endereço do link precisa ter pelo menos 3 letras ou números."); return; }
     if (senha.length < 8) { setErro("A senha precisa ter pelo menos 8 caracteres."); return; }
     if (!aceite) { setErro("Para continuar, aceite os Termos de Uso e a Política de Privacidade."); return; }
@@ -63,7 +66,7 @@ export default function CriarContaPage() {
       password: senha,
       options: {
         // Lidos no primeiro acesso por useAuth, que cria a empresa.
-        data: { empresa_nome: empresa.trim(), empresa_slug: slugFinal },
+        data: { empresa_nome: empresa.trim(), empresa_slug: slugFinal, empresa_segmento: segmento },
         emailRedirectTo: `${window.location.origin}${BASE_PATH}/login?confirmado=1`,
       },
     });
@@ -124,7 +127,7 @@ export default function CriarContaPage() {
               Cadastre sua empresa
             </h1>
             <p className="mt-3 text-[15px] leading-relaxed text-arx-mist">
-              Em seguida você já monta sua base de freelancers e cria o primeiro job.
+              Em seguida você já monta sua base de profissionais e organiza o primeiro trabalho.
             </p>
 
             <form onSubmit={handleSubmit} className="mt-8 space-y-5">
@@ -135,7 +138,17 @@ export default function CriarContaPage() {
               </div>
 
               <div>
-                <label htmlFor="slug" className="mb-1.5 block text-[13px] text-arx-mist">Endereço do seu link de cadastro de freelas</label>
+                <label htmlFor="segmento" className="mb-1.5 block text-[13px] text-arx-mist">Segmento</label>
+                <select id="segmento" required value={segmento} onChange={(e) => setSegmento(e.target.value)}
+                  className={`${inputClass} ${segmento ? "" : "text-arx-slate"}`}>
+                  <option value="" disabled>Escolha o que mais se parece com a sua empresa</option>
+                  {SEGMENTOS.map((s) => <option key={s.id} value={s.id} className="text-white">{s.nome}</option>)}
+                </select>
+                <p className="mt-1.5 text-[12px] text-arx-slate">O sistema já vem com as funções e os termos do seu segmento. Dá para mudar depois.</p>
+              </div>
+
+              <div>
+                <label htmlFor="slug" className="mb-1.5 block text-[13px] text-arx-mist">Endereço do seu link de cadastro de profissionais</label>
                 <div className="flex items-stretch overflow-hidden rounded-lg border border-white/10 bg-arx-obsidian focus-within:border-arx-crew-soft">
                   <span className="flex items-center whitespace-nowrap border-r border-white/10 bg-arx-surface px-3 text-[13px] text-arx-slate">
                     arxum.com.br/crew/cadastro/
@@ -146,7 +159,7 @@ export default function CriarContaPage() {
                     placeholder="sua-empresa"
                     className="min-w-0 flex-1 bg-transparent px-3 py-3 text-[15px] text-white placeholder:text-arx-slate focus:outline-none" />
                 </div>
-                <p className="mt-1.5 text-[12px] text-arx-slate">Você envia esse link para os freelancers se cadastrarem na sua base.</p>
+                <p className="mt-1.5 text-[12px] text-arx-slate">Você envia esse link para os profissionais se cadastrarem na sua base.</p>
               </div>
 
               <div>
@@ -187,7 +200,7 @@ export default function CriarContaPage() {
               )}
 
               <button type="submit" disabled={enviando}
-                className="flex w-full items-center justify-center gap-2 rounded-lg bg-arx-crew py-3.5 text-[15px] font-semibold text-white transition-colors hover:bg-[#8b5cf6] disabled:opacity-60">
+                className="flex w-full items-center justify-center gap-2 rounded-lg bg-arx-crew-strong py-3.5 text-[15px] font-semibold text-white transition-colors hover:bg-arx-crew disabled:opacity-60">
                 {enviando ? <><Loader2 size={17} className="animate-spin" /> Criando conta...</> : <><CheckCircle2 size={17} /> Criar conta</>}
               </button>
             </form>

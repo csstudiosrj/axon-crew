@@ -1,23 +1,32 @@
 import Link from "next/link";
 
-export function CrewMark({ size = 26 }: { size?: number }) {
+// Símbolo do ARXUM Crew: crachá de equipe (credencial do freelancer).
+// Mesmo estilo do símbolo do Zelo: traço na cor do produto e
+// preenchimento translúcido a 12%.
+export function CrewMark({ size = 26, cor = "#8b5cf6" }: { size?: number; cor?: string }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 36 36" fill="none" aria-hidden="true">
-      <path d="M9 25 L18 10 L27 25 Z" stroke="var(--color-arx-crew-soft)" strokeWidth="2.2" strokeLinejoin="round" opacity="0.55" />
-      <circle cx="18" cy="10" r="3.4" fill="var(--color-arx-crew-soft)" />
-      <circle cx="9" cy="25" r="3.4" fill="var(--color-arx-crew-soft)" />
-      <circle cx="27" cy="25" r="3.4" fill="var(--color-arx-crew-soft)" />
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true" style={{ flexShrink: 0 }}>
+      <rect x="4.5" y="5.5" width="15" height="16" rx="3" fill={cor} fillOpacity="0.12" stroke={cor} strokeWidth="1.8" />
+      <path d="M9.5 5.5 V3.8 a1.3 1.3 0 0 1 1.3 -1.3 h2.4 a1.3 1.3 0 0 1 1.3 1.3 V5.5" stroke={cor} strokeWidth="1.8" strokeLinejoin="round" />
+      <circle cx="12" cy="11.4" r="2.3" stroke={cor} strokeWidth="1.8" />
+      <path d="M8.3 18.2 a3.7 3.7 0 0 1 7.4 0" stroke={cor} strokeWidth="1.8" strokeLinecap="round" />
     </svg>
+  );
+}
+
+export function CrewWordmark({ tamanho = "text-[16px] sm:text-[19px]" }: { tamanho?: string }) {
+  return (
+    <span className={`whitespace-nowrap font-logo font-extrabold leading-none tracking-[-0.03em] ${tamanho}`}>
+      <span className="text-arx-crew">ARXUM</span> <span className="text-white">Crew</span>
+    </span>
   );
 }
 
 export default function CrewLogo() {
   return (
-    <Link href="/" className="flex items-center gap-2.5" aria-label="ARXUM Crew — início">
-      <CrewMark />
-      <span className="whitespace-nowrap font-logo text-[17px] font-extrabold leading-none tracking-[-0.03em] sm:text-[19px]">
-        <span className="text-arx-crew-soft">ARXUM</span> <span className="text-white">Crew</span>
-      </span>
+    <Link href="/" className="flex items-center gap-2" aria-label="ARXUM Crew — início">
+      <CrewMark size={24} />
+      <CrewWordmark />
     </Link>
   );
 }
