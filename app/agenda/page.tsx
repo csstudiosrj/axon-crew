@@ -8,10 +8,16 @@ import {
 } from "lucide-react";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../lib/auth-context";
+import { BASE_PATH } from "../../lib/base-path";
+import Lembretes from "../../components/painel/Lembretes";
+import EquipesSalvas from "../../components/painel/EquipesSalvas";
+import { notaQualidade, type HistoricoEscala } from "../../lib/qualidade";
+import { maiuscula, novo, artigo, de, primeiro, flex, nenhum, um } from "../../lib/segmentos";
 
 
 export default function AgendaPage() {
-  const { companyId, especialidades } = useAuth();
+  const { companyId, especialidades, termos } = useAuth();
+  const gJob = termos.generoJob;
 
   const [eventos, setEventos] = useState<any[]>([]);
   const [todosFreelancers, setTodosFreelancers] = useState<any[]>([]);
@@ -33,6 +39,7 @@ export default function AgendaPage() {
   const [necessidades, setNecessidades] = useState([{ id: Date.now().toString(), especialidade: especialidades[0] ?? "", quantidade: 1, cacheBase: '' }]);
   const [slotsEditando, setSlotsEditando] = useState<any[]>([]);
   const [buscaFreela, setBuscaFreela] = useState("");
+  const [historico, setHistorico] = useState<HistoricoEscala[]>([]);
 
   useEffect(() => { if (companyId) carregarTudo(); }, [companyId]);
 
@@ -48,6 +55,12 @@ export default function AgendaPage() {
       ]);
 
       if (resTodosF.data) setTodosFreelancers(resTodosF.data);
+      if (resEscalas.data && resEv.data) {
+        const datas = Object.fromEntries(resEv.data.map((e: any) => [e.id, e.data]));
+        setHistorico(resEscalas.data.map((e: any) => ({
+          freelancer_id: e.freelancer_id, resposta: e.resposta, checkin_em: e.checkin_em, data: datas[e.evento_id],
+        })));
+      }
       if (resDisponiveisF.data) setFreelancersDisponiveis(resDisponiveisF.data);
 
       if (resEv.data) {
@@ -56,11 +69,18 @@ export default function AgendaPage() {
             .filter(s => s.evento_id === ev.id)
             .map(slot => {
               const escalasDoSlot = (resEscalas.data || []).filter(esc => esc.slot_id === slot.id);
-              const designados = escalasDoSlot.map(esc => {
+              const pessoas = escalasDoSlot.map(esc => {
                 const f = (resTodosF.data || []).find(fr => fr.id === esc.freelancer_id);
-                return f ? { ...f, escala_id: esc.id } : null;
+                return f ? {
+                  ...f, escala_id: esc.id, token: esc.token,
+                  resposta: esc.resposta ?? (esc.confirmado ? 'confirmado' : 'pendente'),
+                  motivo_recusa: esc.motivo_recusa, checkin_em: esc.checkin_em,
+                } : null;
               }).filter(Boolean);
-              return { ...slot, designados };
+              // Quem recusou não ocupa a vaga: aparece à parte, pedindo substituto.
+              const designados = pessoas.filter((p: any) => p.resposta !== 'recusado');
+              const recusados = pessoas.filter((p: any) => p.resposta === 'recusado');
+              return { ...slot, designados, recusados };
             });
           return { ...ev, slots: slotsDoEvento };
         });
@@ -95,6 +115,9 @@ export default function AgendaPage() {
           if (!faltasPorEvento[evento.id]) faltasPorEvento[evento.id] = { titulo: evento.titulo, faltas: [] };
           faltasPorEvento[evento.id].faltas.push(`${faltam} ${slot.especialidade}`);
         }
+        (slot.recusados || []).forEach((freela: any) => {
+          novosAlertas.push({ id: `recusa-${freela.escala_id}`, tipo: 'falta', titulo: `${freela.nome} recusou: ${evento.titulo}`, desc: `Escolha um substituto para ${slot.especialidade}.` });
+        });
         slot.designados.forEach((freela: any) => {
           const horario = evento.horario_inicio || 'sem-horario';
           const key = `${freela.id}_${evento.data}_${horario}`;
@@ -139,9 +162,9 @@ export default function AgendaPage() {
 
     const { error: slotsError } = await supabase.from('evento_slots').insert(slotsParaInserir);
     if (slotsError) {
-      mostrarToast("Evento criado, mas erro ao salvar vagas", "erro");
+      mostrarToast(`${maiuscula(termos.job)} ${flex("criad", gJob)}, mas houve erro ao salvar as vagas`, "erro");
     } else {
-      mostrarToast("Evento criado com sucesso!", "sucesso");
+      mostrarToast(`${maiuscula(termos.job)} ${flex("criad", gJob)}!`, "sucesso");
       setModalNovoEvento(false);
       setNovoEvento({ titulo: '', data: '', horario_inicio: '', local: '' });
       setNecessidades([{ id: Date.now().toString(), especialidade: especialidades[0] ?? "", quantidade: 1, cacheBase: '' }]);
@@ -172,7 +195,7 @@ export default function AgendaPage() {
       await supabase.from('evento_slots').insert(novosSlots);
     }
 
-    mostrarToast("Evento atualizado!", "sucesso");
+    mostrarToast(`${maiuscula(termos.job)} ${flex("atualizad", gJob)}!`, "sucesso");
     setModalEditarEvento(null);
     setSlotsEditando([]);
     carregarTudo();
@@ -182,7 +205,7 @@ export default function AgendaPage() {
     if (!modalDelete) return;
     const { error } = await supabase.from('eventos').delete().eq('id', modalDelete);
     if (!error) {
-      mostrarToast("Evento excluído", "sucesso");
+      mostrarToast(`${maiuscula(termos.job)} ${flex("excluíd", gJob)}`, "sucesso");
       setModalDelete(null);
       setMenuAberto(null);
       carregarTudo();
@@ -226,9 +249,9 @@ export default function AgendaPage() {
     const data = formatarDataInputParaBR(evento.data);
     const horario = evento.horario_inicio ? ` às ${evento.horario_inicio.substring(0, 5)}` : '';
     const msg = encodeURIComponent(
-      `Olá ${freela.nome}!\n\nVocê está na escala do evento *${evento.titulo}*.\n\n` +
-      `Data: ${data}${horario}\nLocal: ${evento.local}\nFunção: ${slot.especialidade}\nCachê: R$ ${slot.cache_base},00\n\n` +
-      `Por favor, confirme sua presença respondendo esta mensagem.\n\nARXUM Crew`
+      `Olá ${freela.nome}!\n\nVocê está na escala ${de(termos.job, gJob)} *${evento.titulo}*.\n\n` +
+      `Data: ${data}${horario}\nLocal: ${evento.local}\nFunção: ${slot.especialidade}\n${maiuscula(termos.pagamento)}: R$ ${slot.cache_base},00\n\n` +
+      `Confirme sua presença e aceite o termo pelo seu link pessoal:\n${window.location.origin}${BASE_PATH}/confirmar/${freela.token}`
     );
     return `https://wa.me/55${tel}?text=${msg}`;
   };
@@ -259,8 +282,8 @@ export default function AgendaPage() {
 
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-white">Agenda & Jobs</h2>
-          <p className="text-sm text-gray-400 mt-1">Gerencie eventos e a escala da sua equipe.</p>
+          <h2 className="text-2xl font-bold text-white">Agenda & {maiuscula(termos.jobs)}</h2>
+          <p className="text-sm text-gray-400 mt-1">Gerencie {termos.jobs} e a escala da sua equipe.</p>
         </div>
         <div className="flex gap-3">
           <button onClick={() => setViewMode(viewMode === 'list' ? 'calendar' : 'list')}
@@ -269,8 +292,8 @@ export default function AgendaPage() {
             {viewMode === 'list' ? 'Ver Calendário' : 'Ver Lista'}
           </button>
           <button onClick={() => setModalNovoEvento(true)}
-            className="bg-green-600 hover:bg-green-500 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 active:scale-95 flex items-center gap-2 shadow-lg shadow-green-900/20">
-            <Plus size={18} /> Novo Evento
+            className="bg-violet-600 hover:bg-violet-500 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 active:scale-95 flex items-center gap-2 shadow-lg shadow-violet-900/20">
+            <Plus size={18} /> {novo(termos.job, gJob)}
           </button>
         </div>
       </div>
@@ -279,14 +302,14 @@ export default function AgendaPage() {
         <div className="lg:col-span-2 space-y-4">
           {viewMode === 'list' ? (
             <>
-              <h3 className="text-lg font-medium text-white mb-4">Próximos Eventos</h3>
+              <h3 className="text-lg font-medium text-white mb-4">{gJob === "f" ? "Próximas" : "Próximos"} {maiuscula(termos.jobs)}</h3>
               {isLoading ? (
                 <div className="text-center py-12 text-gray-500">Carregando eventos...</div>
               ) : eventos.length === 0 ? (
                 <div className="bg-[#121212] border border-[#222] border-dashed rounded-xl p-12 text-center">
                   <CalendarIcon size={48} className="mx-auto text-gray-600 mb-4" />
-                  <p className="text-gray-400">Nenhum evento cadastrado.</p>
-                  <button onClick={() => setModalNovoEvento(true)} className="mt-4 text-green-500 hover:text-green-400 text-sm font-medium">Criar meu primeiro evento</button>
+                  <p className="text-gray-400">{maiuscula(nenhum(gJob))} {termos.job} {flex("cadastrad", gJob)}.</p>
+                  <button onClick={() => setModalNovoEvento(true)} className="mt-4 text-violet-400 hover:text-violet-300 text-sm font-medium">Criar {gJob === "f" ? "minha" : "meu"} {primeiro(termos.job, gJob)}</button>
                 </div>
               ) : (
                 eventos.map(evento => {
@@ -301,7 +324,7 @@ export default function AgendaPage() {
                           <div className="flex items-center gap-3 mb-1 flex-wrap">
                             <h4 className="text-lg font-bold text-gray-100">{evento.titulo}</h4>
                             {evento.status === 'confirmado' && <span className="bg-blue-500/10 text-blue-500 border border-blue-500/20 px-2 py-0.5 rounded text-xs font-medium">Confirmado</span>}
-                            {evento.status === 'montagem'  && <span className="bg-yellow-500/10 text-yellow-500 border border-yellow-500/20 px-2 py-0.5 rounded text-xs font-medium">Em Montagem</span>}
+                            {evento.status === 'montagem'  && <span className="bg-yellow-500/10 text-yellow-500 border border-yellow-500/20 px-2 py-0.5 rounded text-xs font-medium">Em andamento</span>}
                             {evento.status === 'orcamento' && <span className="bg-gray-800 text-gray-400 border border-[#333] px-2 py-0.5 rounded text-xs font-medium">Orçamento</span>}
                           </div>
                           <div className="flex items-center gap-4 text-sm text-gray-500 flex-wrap">
@@ -319,17 +342,17 @@ export default function AgendaPage() {
                             <div className="absolute right-0 top-8 w-52 bg-[#1a1a1a] border border-[#333] rounded-lg shadow-2xl z-20 py-1 overflow-hidden animate-in fade-in">
                               <button onClick={() => { setMenuAberto(null); setSlotsEditando([]); setModalEditarEvento(evento); }}
                                 className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-[#222] flex items-center gap-2">
-                                <Edit size={14} /> Editar Evento & Vagas
+                                <Edit size={14} /> Editar {termos.job} e vagas
                               </button>
                               <div className="h-px bg-[#333] my-1"></div>
                               <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">Mudar Status</div>
                               <button onClick={() => handleMudarStatusEvento(evento.id, 'orcamento')} className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-[#222]">Orçamento</button>
                               <button onClick={() => handleMudarStatusEvento(evento.id, 'confirmado')} className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-[#222]">Confirmado</button>
-                              <button onClick={() => handleMudarStatusEvento(evento.id, 'montagem')} className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-[#222]">Em Montagem</button>
+                              <button onClick={() => handleMudarStatusEvento(evento.id, 'montagem')} className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-[#222]">Em andamento</button>
                               <div className="h-px bg-[#333] my-1"></div>
                               <button onClick={() => { setMenuAberto(null); setModalDelete(evento.id); }}
                                 className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-red-500/10 flex items-center gap-2">
-                                <Trash2 size={14} /> Excluir Evento
+                                <Trash2 size={14} /> Excluir {termos.job}
                               </button>
                             </div>
                           </>
@@ -339,7 +362,7 @@ export default function AgendaPage() {
                       <div className="bg-[#0a0a0a] rounded-lg p-4 border border-[#1a1a1a] flex items-center justify-between">
                         <div className="flex-1">
                           <div className="flex justify-between text-xs mb-2">
-                            <span className="text-gray-400 flex items-center gap-1.5"><Users size={14} /> Escala de Staff</span>
+                            <span className="text-gray-400 flex items-center gap-1.5"><Users size={14} /> Escala da equipe</span>
                             <span className={vagasPreenchidas === vagasTotais && vagasTotais > 0 ? "text-green-500 font-medium" : "text-yellow-500 font-medium"}>
                               {vagasPreenchidas} / {vagasTotais} Vagas
                             </span>
@@ -350,7 +373,7 @@ export default function AgendaPage() {
                           </div>
                         </div>
                         <div className="ml-6 pl-6 border-l border-[#222]">
-                          <button onClick={() => setModalEscala(evento)} className="text-sm font-medium text-green-500 hover:text-green-400 flex items-center gap-1 py-2">
+                          <button onClick={() => setModalEscala(evento)} className="text-sm font-medium text-violet-400 hover:text-violet-300 flex items-center gap-1 py-2">
                             Gerenciar Escala <ChevronRight size={16} />
                           </button>
                         </div>
@@ -382,12 +405,12 @@ export default function AgendaPage() {
                   const hoje = new Date();
                   const isHoje = dia === hoje.getDate() && mesAtual.getMonth() === hoje.getMonth() && mesAtual.getFullYear() === hoje.getFullYear();
                   return (
-                    <div key={dia} className={`bg-[#121212] min-h-[100px] p-2 border-t border-[#222] hover:bg-[#161616] ${isHoje ? 'ring-1 ring-inset ring-green-500/50' : ''}`}>
-                      <span className={`text-xs font-medium w-6 h-6 flex items-center justify-center rounded-full mb-1 ${isHoje ? 'bg-green-500 text-white' : 'text-gray-400'}`}>{dia}</span>
+                    <div key={dia} className={`bg-[#121212] min-h-[100px] p-2 border-t border-[#222] hover:bg-[#161616] ${isHoje ? 'ring-1 ring-inset ring-violet-500/50' : ''}`}>
+                      <span className={`text-xs font-medium w-6 h-6 flex items-center justify-center rounded-full mb-1 ${isHoje ? 'bg-violet-600 text-white' : 'text-gray-400'}`}>{dia}</span>
                       <div className="space-y-1">
                         {evs.map(e => (
                           <div key={e.id} onClick={() => setModalEscala(e)}
-                            className="text-[10px] bg-green-500/10 text-green-500 border border-green-500/20 p-1 rounded truncate cursor-pointer hover:bg-green-500/20">
+                            className="text-[10px] bg-violet-500/10 text-violet-300 border border-violet-500/20 p-1 rounded truncate cursor-pointer hover:bg-violet-500/20">
                             {e.titulo}
                           </div>
                         ))}
@@ -401,9 +424,9 @@ export default function AgendaPage() {
         </div>
 
         <div className="space-y-6">
-          <div className="bg-[#121212] border border-[#222] rounded-xl p-5 sticky top-6">
+          <div className="bg-[#121212] border border-[#222] rounded-xl p-5">
             <h3 className="text-base font-medium text-white mb-4 flex items-center gap-2">
-              <Clock size={18} className="text-green-500" /> Alertas de Escala
+              <Clock size={18} className="text-violet-400" /> Alertas de Escala
             </h3>
             <div className="space-y-3">
               {alertas.length === 0 ? (
@@ -423,6 +446,7 @@ export default function AgendaPage() {
               )}
             </div>
           </div>
+          <Lembretes eventos={eventos} termos={termos} />
         </div>
       </div>
 
@@ -431,41 +455,41 @@ export default function AgendaPage() {
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-[#121212] border border-[#222] rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
             <div className="flex justify-between items-center p-5 border-b border-[#222]">
-              <h3 className="text-lg font-bold text-white flex items-center gap-2"><CalendarIcon size={18} className="text-green-500" /> Criar Novo Evento</h3>
+              <h3 className="text-lg font-bold text-white flex items-center gap-2"><CalendarIcon size={18} className="text-violet-400" /> {novo(termos.job, gJob)}</h3>
               <button onClick={() => setModalNovoEvento(false)} className="text-gray-500 hover:text-white"><X size={20} /></button>
             </div>
             <div className="p-6 overflow-y-auto flex-1">
               <form id="form-evento" onSubmit={handleSalvarEvento} className="space-y-6">
                 <div>
-                  <h4 className="text-sm font-medium text-white mb-3 border-b border-[#222] pb-2">1. Dados do Job</h4>
+                  <h4 className="text-sm font-medium text-white mb-3 border-b border-[#222] pb-2">1. Dados {de(termos.job, gJob)}</h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="md:col-span-2">
-                      <label className="block text-xs text-gray-400 mb-1">Nome do Evento / Job *</label>
+                      <label className="block text-xs text-gray-400 mb-1">Nome {de(termos.job, gJob)} *</label>
                       <input required type="text" value={novoEvento.titulo} onChange={e => setNovoEvento({ ...novoEvento, titulo: e.target.value })}
-                        className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg p-2.5 text-sm text-white focus:border-green-500 focus:outline-none" placeholder="Ex: Lançamento Produto X" />
+                        className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg p-2.5 text-sm text-white focus:border-violet-500 focus:outline-none" placeholder="Ex: Lançamento Produto X" />
                     </div>
                     <div>
                       <label className="block text-xs text-gray-400 mb-1">Data *</label>
                       <input required type="date" value={novoEvento.data} onChange={e => setNovoEvento({ ...novoEvento, data: e.target.value })}
-                        className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg p-2.5 text-sm text-white focus:border-green-500 focus:outline-none" />
+                        className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg p-2.5 text-sm text-white focus:border-violet-500 focus:outline-none" />
                     </div>
                     <div>
                       <label className="block text-xs text-gray-400 mb-1">Horário de Início</label>
                       <input type="time" value={novoEvento.horario_inicio} onChange={e => setNovoEvento({ ...novoEvento, horario_inicio: e.target.value })}
-                        className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg p-2.5 text-sm text-white focus:border-green-500 focus:outline-none" />
+                        className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg p-2.5 text-sm text-white focus:border-violet-500 focus:outline-none" />
                     </div>
                     <div className="md:col-span-2">
                       <label className="block text-xs text-gray-400 mb-1">Local *</label>
                       <input required type="text" value={novoEvento.local} onChange={e => setNovoEvento({ ...novoEvento, local: e.target.value })}
-                        className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg p-2.5 text-sm text-white focus:border-green-500 focus:outline-none" placeholder="Ex: Expo Center Norte" />
+                        className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg p-2.5 text-sm text-white focus:border-violet-500 focus:outline-none" placeholder="Ex: Expo Center Norte" />
                     </div>
                   </div>
                 </div>
                 <div>
                   <div className="flex justify-between items-center mb-3 border-b border-[#222] pb-2">
-                    <h4 className="text-sm font-medium text-white">2. Necessidade de Staff (Vagas)</h4>
+                    <h4 className="text-sm font-medium text-white">2. Vagas por função</h4>
                     <button type="button" onClick={() => setNecessidades([...necessidades, { id: Date.now().toString(), especialidade: especialidades[0] ?? "", quantidade: 1, cacheBase: '' }])}
-                      className="text-xs text-green-500 hover:text-green-400 font-medium flex items-center gap-1">
+                      className="text-xs text-violet-400 hover:text-violet-300 font-medium flex items-center gap-1">
                       <Plus size={14} /> Adicionar Função
                     </button>
                   </div>
@@ -475,19 +499,19 @@ export default function AgendaPage() {
                         <div className="flex-1">
                           <label className="block text-xs text-gray-500 mb-1">Especialidade</label>
                           <select value={nec.especialidade} onChange={e => setNecessidades(necessidades.map(n => n.id === nec.id ? { ...n, especialidade: e.target.value } : n))}
-                            className="w-full bg-[#121212] border border-[#333] rounded-md p-2 text-sm text-white focus:border-green-500 focus:outline-none cursor-pointer">
+                            className="w-full bg-[#121212] border border-[#333] rounded-md p-2 text-sm text-white focus:border-violet-500 focus:outline-none cursor-pointer">
                             {especialidades.map((esp: string) => <option key={esp} value={esp}>{esp}</option>)}
                           </select>
                         </div>
                         <div className="w-24">
                           <label className="block text-xs text-gray-500 mb-1">Qtd</label>
                           <input type="number" min="1" value={nec.quantidade} onChange={e => setNecessidades(necessidades.map(n => n.id === nec.id ? { ...n, quantidade: Number(e.target.value) } : n))}
-                            className="w-full bg-[#121212] border border-[#333] rounded-md p-2 text-sm text-white focus:border-green-500 focus:outline-none text-center" />
+                            className="w-full bg-[#121212] border border-[#333] rounded-md p-2 text-sm text-white focus:border-violet-500 focus:outline-none text-center" />
                         </div>
                         <div className="w-32">
-                          <label className="block text-xs text-gray-500 mb-1">Cachê (R$)</label>
+                          <label className="block text-xs text-gray-500 mb-1">{maiuscula(termos.pagamento)} (R$)</label>
                           <input type="number" placeholder="Ex: 300" value={nec.cacheBase} onChange={e => setNecessidades(necessidades.map(n => n.id === nec.id ? { ...n, cacheBase: e.target.value } : n))}
-                            className="w-full bg-[#121212] border border-[#333] rounded-md p-2 text-sm text-white focus:border-green-500 focus:outline-none" />
+                            className="w-full bg-[#121212] border border-[#333] rounded-md p-2 text-sm text-white focus:border-violet-500 focus:outline-none" />
                         </div>
                         {index > 0 && (
                           <button type="button" onClick={() => setNecessidades(necessidades.filter(n => n.id !== nec.id))} className="p-2 text-gray-500 hover:text-red-500 mb-0.5"><Trash2 size={18} /></button>
@@ -500,7 +524,7 @@ export default function AgendaPage() {
             </div>
             <div className="p-5 border-t border-[#222] flex justify-end gap-3 bg-[#121212]">
               <button onClick={() => setModalNovoEvento(false)} className="px-4 py-2 text-sm text-gray-400 hover:text-white">Cancelar</button>
-              <button type="submit" form="form-evento" className="bg-green-600 hover:bg-green-500 text-white px-6 py-2 rounded-lg text-sm font-medium transition-all duration-200 active:scale-95">Criar Evento & Vagas</button>
+              <button type="submit" form="form-evento" className="bg-violet-600 hover:bg-violet-500 text-white px-6 py-2 rounded-lg text-sm font-medium transition-all duration-200 active:scale-95">Criar {termos.job} e vagas</button>
             </div>
           </div>
         </div>
@@ -511,33 +535,33 @@ export default function AgendaPage() {
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-[#121212] border border-[#222] rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
             <div className="flex justify-between items-center p-5 border-b border-[#222]">
-              <h3 className="text-lg font-bold text-white flex items-center gap-2"><Edit size={18} className="text-green-500" /> Editar Evento</h3>
+              <h3 className="text-lg font-bold text-white flex items-center gap-2"><Edit size={18} className="text-violet-400" /> Editar {termos.job}</h3>
               <button onClick={() => { setModalEditarEvento(null); setSlotsEditando([]); }} className="text-gray-500 hover:text-white"><X size={20} /></button>
             </div>
             <div className="p-6 overflow-y-auto flex-1">
               <form id="form-editar-evento" onSubmit={handleAtualizarEvento} className="space-y-6">
                 <div>
-                  <h4 className="text-sm font-medium text-white mb-3 border-b border-[#222] pb-2">Dados do Evento</h4>
+                  <h4 className="text-sm font-medium text-white mb-3 border-b border-[#222] pb-2">Dados {de(termos.job, gJob)}</h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="md:col-span-2">
-                      <label className="block text-xs text-gray-400 mb-1">Nome do Evento / Job *</label>
+                      <label className="block text-xs text-gray-400 mb-1">Nome {de(termos.job, gJob)} *</label>
                       <input required type="text" value={modalEditarEvento.titulo} onChange={e => setModalEditarEvento({ ...modalEditarEvento, titulo: e.target.value })}
-                        className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg p-2.5 text-sm text-white focus:border-green-500 focus:outline-none" />
+                        className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg p-2.5 text-sm text-white focus:border-violet-500 focus:outline-none" />
                     </div>
                     <div>
                       <label className="block text-xs text-gray-400 mb-1">Data *</label>
                       <input required type="date" value={modalEditarEvento.data} onChange={e => setModalEditarEvento({ ...modalEditarEvento, data: e.target.value })}
-                        className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg p-2.5 text-sm text-white focus:border-green-500 focus:outline-none" />
+                        className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg p-2.5 text-sm text-white focus:border-violet-500 focus:outline-none" />
                     </div>
                     <div>
                       <label className="block text-xs text-gray-400 mb-1">Horário de Início</label>
                       <input type="time" value={modalEditarEvento.horario_inicio || ''} onChange={e => setModalEditarEvento({ ...modalEditarEvento, horario_inicio: e.target.value })}
-                        className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg p-2.5 text-sm text-white focus:border-green-500 focus:outline-none" />
+                        className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg p-2.5 text-sm text-white focus:border-violet-500 focus:outline-none" />
                     </div>
                     <div className="md:col-span-2">
                       <label className="block text-xs text-gray-400 mb-1">Local *</label>
                       <input required type="text" value={modalEditarEvento.local} onChange={e => setModalEditarEvento({ ...modalEditarEvento, local: e.target.value })}
-                        className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg p-2.5 text-sm text-white focus:border-green-500 focus:outline-none" />
+                        className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg p-2.5 text-sm text-white focus:border-violet-500 focus:outline-none" />
                     </div>
                   </div>
                 </div>
@@ -564,7 +588,7 @@ export default function AgendaPage() {
                   <div className="flex justify-between items-center mb-3 border-b border-[#222] pb-2">
                     <h4 className="text-sm font-medium text-white">Adicionar Novas Vagas</h4>
                     <button type="button" onClick={() => setSlotsEditando([...slotsEditando, { id: Date.now().toString(), especialidade: especialidades[0] ?? "", quantidade: 1, cacheBase: '' }])}
-                      className="text-xs text-green-500 hover:text-green-400 font-medium flex items-center gap-1">
+                      className="text-xs text-violet-400 hover:text-violet-300 font-medium flex items-center gap-1">
                       <Plus size={14} /> Adicionar Função
                     </button>
                   </div>
@@ -577,19 +601,19 @@ export default function AgendaPage() {
                           <div className="flex-1">
                             <label className="block text-xs text-gray-500 mb-1">Especialidade</label>
                             <select value={s.especialidade} onChange={e => setSlotsEditando(slotsEditando.map(x => x.id === s.id ? { ...x, especialidade: e.target.value } : x))}
-                              className="w-full bg-[#121212] border border-[#333] rounded-md p-2 text-sm text-white focus:border-green-500 focus:outline-none cursor-pointer">
+                              className="w-full bg-[#121212] border border-[#333] rounded-md p-2 text-sm text-white focus:border-violet-500 focus:outline-none cursor-pointer">
                               {especialidades.map((esp: string) => <option key={esp} value={esp}>{esp}</option>)}
                             </select>
                           </div>
                           <div className="w-24">
                             <label className="block text-xs text-gray-500 mb-1">Qtd</label>
                             <input type="number" min="1" value={s.quantidade} onChange={e => setSlotsEditando(slotsEditando.map(x => x.id === s.id ? { ...x, quantidade: Number(e.target.value) } : x))}
-                              className="w-full bg-[#121212] border border-[#333] rounded-md p-2 text-sm text-white focus:border-green-500 focus:outline-none text-center" />
+                              className="w-full bg-[#121212] border border-[#333] rounded-md p-2 text-sm text-white focus:border-violet-500 focus:outline-none text-center" />
                           </div>
                           <div className="w-32">
-                            <label className="block text-xs text-gray-500 mb-1">Cachê (R$)</label>
+                            <label className="block text-xs text-gray-500 mb-1">{maiuscula(termos.pagamento)} (R$)</label>
                             <input type="number" placeholder="Ex: 300" value={s.cacheBase} onChange={e => setSlotsEditando(slotsEditando.map(x => x.id === s.id ? { ...x, cacheBase: e.target.value } : x))}
-                              className="w-full bg-[#121212] border border-[#333] rounded-md p-2 text-sm text-white focus:border-green-500 focus:outline-none" />
+                              className="w-full bg-[#121212] border border-[#333] rounded-md p-2 text-sm text-white focus:border-violet-500 focus:outline-none" />
                           </div>
                           <button type="button" onClick={() => setSlotsEditando(slotsEditando.filter(x => x.id !== s.id))} className="p-2 text-gray-500 hover:text-red-500 mb-0.5"><Trash2 size={18} /></button>
                         </div>
@@ -601,7 +625,7 @@ export default function AgendaPage() {
             </div>
             <div className="p-5 border-t border-[#222] flex justify-end gap-3 bg-[#121212]">
               <button onClick={() => { setModalEditarEvento(null); setSlotsEditando([]); }} className="px-4 py-2 text-sm text-gray-400 hover:text-white">Cancelar</button>
-              <button type="submit" form="form-editar-evento" className="bg-green-600 hover:bg-green-500 text-white px-6 py-2 rounded-lg text-sm font-medium transition-all duration-200 active:scale-95">Salvar Alterações</button>
+              <button type="submit" form="form-editar-evento" className="bg-violet-600 hover:bg-violet-500 text-white px-6 py-2 rounded-lg text-sm font-medium transition-all duration-200 active:scale-95">Salvar Alterações</button>
             </div>
           </div>
         </div>
@@ -623,11 +647,15 @@ export default function AgendaPage() {
               <button onClick={() => setModalEscala(null)} className="p-2 bg-[#222] hover:bg-[#333] rounded-full text-gray-400 hover:text-white"><X size={20} /></button>
             </div>
             <div className="flex-1 overflow-y-auto p-6 bg-[#0a0a0a]">
+              {companyId && modalEscala.slots.length > 0 && (
+                <EquipesSalvas companyId={companyId} eventoId={modalEscala.id} slots={modalEscala.slots}
+                  todos={todosFreelancers} aoMudar={carregarTudo} avisar={mostrarToast} />
+              )}
               {modalEscala.slots.length === 0 ? (
                 <div className="text-center py-16 text-gray-500">
                   <Users size={40} className="mx-auto mb-3 opacity-30" />
                   <p>Nenhuma vaga cadastrada para este evento.</p>
-                  <p className="text-xs mt-1">Use "Editar Evento" para adicionar vagas.</p>
+                  <p className="text-xs mt-1">Use &quot;Editar {termos.job}&quot; para adicionar vagas.</p>
                 </div>
               ) : (
                 <div className="space-y-6">
@@ -636,7 +664,7 @@ export default function AgendaPage() {
                       <div className="bg-[#1a1a1a] px-5 py-3 border-b border-[#222] flex justify-between items-center">
                         <div>
                           <h4 className="text-white font-medium">{slot.especialidade}</h4>
-                          <p className="text-xs text-gray-500">Cachê Base: R$ {slot.cache_base},00</p>
+                          <p className="text-xs text-gray-500">{maiuscula(termos.pagamento)}: R$ {slot.cache_base},00</p>
                         </div>
                         <div className="flex items-center gap-4">
                           <span className={`text-sm font-medium ${slot.designados.length >= slot.quantidade ? 'text-green-500' : 'text-yellow-500'}`}>
@@ -644,7 +672,7 @@ export default function AgendaPage() {
                           </span>
                           {slot.designados.length < slot.quantidade && (
                             <button onClick={() => setModalSelecionarFreela({ eventoId: modalEscala.id, slotId: slot.id, especialidade: slot.especialidade, cacheBase: slot.cache_base })}
-                              className="bg-green-600/20 text-green-500 hover:bg-green-600 hover:text-white border border-green-500/30 px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-200 active:scale-95 flex items-center gap-1.5">
+                              className="bg-violet-600/20 text-violet-300 hover:bg-violet-600 hover:text-white border border-violet-500/30 px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-200 active:scale-95 flex items-center gap-1.5">
                               <UserPlus size={14} /> Escalar Profissional
                             </button>
                           )}
@@ -667,7 +695,11 @@ export default function AgendaPage() {
                                     </div>
                                     <div>
                                       <p className="text-sm font-medium text-gray-200">{freela.nome}</p>
-                                      <p className="text-xs text-gray-500">{freela.telefone}</p>
+                                      <p className="text-xs">
+                                        {freela.resposta === 'confirmado'
+                                          ? <span className="text-green-500">{freela.checkin_em ? 'Chegou ' + new Date(freela.checkin_em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : 'Confirmado'}</span>
+                                          : <span className="text-yellow-500">Aguardando resposta</span>}
+                                      </p>
                                     </div>
                                   </div>
                                   <div className="flex items-center gap-1">
@@ -687,6 +719,24 @@ export default function AgendaPage() {
                             })}
                           </div>
                         )}
+                        {(slot.recusados || []).length > 0 && (
+                          <div className="mt-3 space-y-2">
+                            {slot.recusados.map((r: any) => (
+                              <div key={r.escala_id} className="flex items-center justify-between gap-3 rounded-lg border border-red-500/20 bg-red-500/5 px-3 py-2.5">
+                                <div className="min-w-0">
+                                  <p className="text-sm text-red-300">{r.nome} recusou</p>
+                                  {r.motivo_recusa && <p className="text-xs text-gray-500 truncate">“{r.motivo_recusa}”</p>}
+                                </div>
+                                <div className="flex shrink-0 items-center gap-1">
+                                  <button onClick={() => setModalSelecionarFreela({ eventoId: modalEscala.id, slotId: slot.id, especialidade: slot.especialidade, cacheBase: slot.cache_base })}
+                                    className="rounded-md bg-violet-600 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-violet-500">Escolher substituto</button>
+                                  <button onClick={() => handleRemoverFreela(r.escala_id)} title="Tirar da lista"
+                                    className="p-1.5 text-gray-500 hover:text-red-500 rounded"><X size={15} /></button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -704,7 +754,7 @@ export default function AgendaPage() {
             <div className="p-4 border-b border-[#222] flex justify-between items-center">
               <div>
                 <h3 className="text-white font-medium">Escalar: {modalSelecionarFreela.especialidade}</h3>
-                <p className="text-xs text-gray-500 mt-0.5">Cachê: R$ {modalSelecionarFreela.cacheBase},00</p>
+                <p className="text-xs text-gray-500 mt-0.5">{maiuscula(termos.pagamento)}: R$ {modalSelecionarFreela.cacheBase},00</p>
               </div>
               <button onClick={() => { setModalSelecionarFreela(null); setBuscaFreela(""); }} className="text-gray-500 hover:text-white"><X size={20} /></button>
             </div>
@@ -712,15 +762,21 @@ export default function AgendaPage() {
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={16} />
                 <input type="text" placeholder="Buscar profissional disponível..." value={buscaFreela} onChange={e => setBuscaFreela(e.target.value)}
-                  className="w-full bg-[#121212] border border-[#333] rounded-lg py-2 pl-9 pr-3 text-sm text-white focus:border-green-500 focus:outline-none" autoFocus />
+                  className="w-full bg-[#121212] border border-[#333] rounded-lg py-2 pl-9 pr-3 text-sm text-white focus:border-violet-500 focus:outline-none" autoFocus />
               </div>
             </div>
             <div className="overflow-y-auto flex-1 p-2">
               {(() => {
-                const filtrados = freelancersDisponiveis.filter(f =>
-                  f.especialidade === modalSelecionarFreela.especialidade &&
-                  f.nome.toLowerCase().includes(buscaFreela.toLowerCase())
-                );
+                const evento = eventos.find((e: any) => e.id === modalSelecionarFreela.eventoId);
+                const jaNoEvento = new Set((evento?.slots || []).flatMap((s: any) => [...s.designados, ...(s.recusados || [])].map((d: any) => d.id)));
+                // Ordena pela nota de qualidade (avaliação + presença): o primeiro é a sugestão.
+                const filtrados = freelancersDisponiveis
+                  .filter(f =>
+                    f.especialidade === modalSelecionarFreela.especialidade &&
+                    !jaNoEvento.has(f.id) &&
+                    f.nome.toLowerCase().includes(buscaFreela.toLowerCase()))
+                  .map(f => ({ ...f, nota: notaQualidade(f, historico) }))
+                  .sort((a, b) => b.nota - a.nota);
                 if (filtrados.length === 0) {
                   return (
                     <div className="text-center py-8">
@@ -729,14 +785,17 @@ export default function AgendaPage() {
                     </div>
                   );
                 }
-                return filtrados.map(freela => (
+                return filtrados.map((freela, i) => (
                   <div key={freela.id} className="flex items-center justify-between p-3 hover:bg-[#1a1a1a] rounded-lg transition-colors">
                     <div>
-                      <p className="text-sm font-medium text-gray-200">{freela.nome}</p>
-                      <p className="text-xs text-gray-500">{freela.telefone} · {freela.avaliacao} estrelas</p>
+                      <p className="text-sm font-medium text-gray-200 flex items-center gap-2">
+                        {freela.nome}
+                        {i === 0 && !buscaFreela && <span className="rounded-full bg-violet-500/15 px-2 py-0.5 text-[10px] text-violet-300">Sugerido</span>}
+                      </p>
+                      <p className="text-xs text-gray-500">Nota {freela.nota.toFixed(1)} · R$ {freela.diaria}</p>
                     </div>
                     <button onClick={() => handleAtribuirFreela(freela)}
-                      className="bg-[#222] text-white hover:bg-green-600 px-3 py-1.5 rounded text-xs font-medium transition-all duration-200 active:scale-95">
+                      className="bg-[#222] text-white hover:bg-violet-600 px-3 py-1.5 rounded text-xs font-medium transition-all duration-200 active:scale-95">
                       Escalar
                     </button>
                   </div>
@@ -754,8 +813,8 @@ export default function AgendaPage() {
             <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-500/20">
               <AlertTriangle size={32} className="text-red-500" />
             </div>
-            <h3 className="text-lg font-bold text-white mb-2">Excluir Evento?</h3>
-            <p className="text-sm text-gray-400 mb-6">Esta ação remove o evento, todas as vagas e escalas associadas.</p>
+            <h3 className="text-lg font-bold text-white mb-2">Excluir {termos.job}?</h3>
+            <p className="text-sm text-gray-400 mb-6">Esta ação remove {artigo(termos.job, gJob)}, todas as vagas e escalas associadas.</p>
             <div className="flex gap-3">
               <button onClick={() => setModalDelete(null)} className="flex-1 py-2.5 rounded-lg border border-[#333] text-gray-300 hover:bg-[#1a1a1a]">Cancelar</button>
               <button onClick={handleDeleteEvento} className="flex-1 py-2.5 rounded-lg bg-red-600 hover:bg-red-500 text-white font-medium transition-all duration-200 active:scale-95">Sim, Excluir</button>

@@ -1,14 +1,35 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { Suspense, useState } from "react";
+import Link from "next/link";
 import { supabase } from "../../lib/supabase";
-import { useRouter } from "next/navigation";
-import { LogIn, AlertCircle } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { LogIn, AlertCircle, CheckCircle2 } from "lucide-react";
+import CrewLogo from "../../components/marketing/CrewLogo";
+
+const inputClass =
+  "w-full rounded-lg border border-white/10 bg-arx-obsidian px-3.5 py-3 text-[15px] text-white placeholder:text-arx-slate focus:border-arx-crew-soft focus:outline-none";
 
 export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
+  );
+}
+
+function LoginForm() {
+  const params = useSearchParams();
   const [email, setEmail]       = useState("");
   const [password, setPassword] = useState("");
-  const [erro, setErro]         = useState("");
+  const [erro, setErro]         = useState(
+    params.get("erro") === "sem-empresa"
+      ? "Não encontramos a empresa ligada a esta conta. Fale com o suporte."
+      : ""
+  );
+  const [aviso, setAviso]       = useState(
+    params.get("confirmado") ? "E-mail confirmado! Entre para acessar o painel." : ""
+  );
   const [loading, setLoading]   = useState(false);
   const router = useRouter();
 
@@ -16,64 +37,71 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     setErro("");
+    setAviso("");
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
-      setErro("E-mail ou senha inválidos.");
+      setErro(
+        error.message.toLowerCase().includes("not confirmed")
+          ? "Confirme seu e-mail pelo link que enviamos antes de entrar."
+          : "E-mail ou senha inválidos."
+      );
       setLoading(false);
     } else {
-      router.push("/");
+      router.push("/freelas");
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center p-4">
-      <div className="w-full max-w-sm">
-
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-white">
-            <span className="text-green-500">ARXUM</span> Crew
-          </h1>
-          <p className="text-gray-500 text-sm mt-2">Gestão de Freelancers</p>
+    <div className="min-h-screen bg-arx-obsidian font-dm text-arx-frost">
+      <header className="border-b border-arx-line">
+        <div className="mx-auto flex h-16 w-full max-w-[1200px] items-center justify-between px-4 sm:px-8">
+          <CrewLogo />
+          <Link href="/criar-conta" className="text-[14px] text-arx-mist hover:text-white">
+            Criar conta
+          </Link>
         </div>
+      </header>
 
-        <div className="bg-[#121212] border border-[#222] rounded-2xl p-8">
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div>
-              <label className="block text-xs text-gray-400 mb-1">E-mail</label>
-              <input
-                type="email" required
-                value={email} onChange={e => setEmail(e.target.value)}
-                placeholder="seu@email.com"
-                className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg p-3 text-sm text-white focus:border-green-500 focus:outline-none"
-              />
+      <main className="mx-auto w-full max-w-[400px] px-4 py-16">
+        <h1 className="text-[32px] font-medium tracking-[-0.02em] text-white">Entrar</h1>
+        <p className="mt-2 text-[15px] text-arx-mist">Acesse o painel da sua empresa.</p>
+
+        <form onSubmit={handleLogin} className="mt-8 space-y-5">
+          <div>
+            <label htmlFor="email" className="mb-1.5 block text-[13px] text-arx-mist">E-mail</label>
+            <input id="email" type="email" required autoComplete="email"
+              value={email} onChange={e => setEmail(e.target.value)}
+              placeholder="voce@suaempresa.com.br" className={inputClass} />
+          </div>
+          <div>
+            <label htmlFor="senha" className="mb-1.5 block text-[13px] text-arx-mist">Senha</label>
+            <input id="senha" type="password" required autoComplete="current-password"
+              value={password} onChange={e => setPassword(e.target.value)}
+              placeholder="••••••••" className={inputClass} />
+          </div>
+
+          {aviso && (
+            <div className="flex items-center gap-2 rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-3 py-2.5 text-[14px] text-emerald-300">
+              <CheckCircle2 size={16} /> {aviso}
             </div>
-            <div>
-              <label className="block text-xs text-gray-400 mb-1">Senha</label>
-              <input
-                type="password" required
-                value={password} onChange={e => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg p-3 text-sm text-white focus:border-green-500 focus:outline-none"
-              />
+          )}
+          {erro && (
+            <div className="flex items-start gap-2 rounded-lg border border-red-500/25 bg-red-500/10 px-3 py-2.5 text-[14px] text-red-300">
+              <AlertCircle size={16} className="mt-0.5 shrink-0" /> {erro}
             </div>
+          )}
 
-            {erro && (
-              <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2 text-sm text-red-400">
-                <AlertCircle size={14} /> {erro}
-              </div>
-            )}
+          <button type="submit" disabled={loading}
+            className="flex w-full items-center justify-center gap-2 rounded-lg bg-arx-crew-strong py-3.5 text-[15px] font-semibold text-white transition-colors hover:bg-arx-crew disabled:opacity-60">
+            <LogIn size={17} />
+            {loading ? "Entrando..." : "Entrar"}
+          </button>
+        </form>
 
-            <button
-              type="submit" disabled={loading}
-              className="w-full bg-green-600 hover:bg-green-500 disabled:opacity-50 text-white py-3 rounded-lg text-sm font-medium transition-all duration-200 active:scale-95 flex items-center justify-center gap-2"
-            >
-              <LogIn size={16} />
-              {loading ? "Entrando..." : "Entrar"}
-            </button>
-          </form>
-        </div>
-
-      </div>
+        <p className="mt-6 text-center text-[14px] text-arx-slate">
+          Ainda não tem conta? <Link href="/criar-conta" className="text-white hover:underline">Cadastre sua empresa</Link>
+        </p>
+      </main>
     </div>
   );
 }

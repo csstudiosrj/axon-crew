@@ -1,338 +1,266 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import {
-  UserPlus, ChevronRight, ChevronLeft, CheckCircle2,
-  AlertCircle, Loader2
-} from "lucide-react";
-import { supabase } from "../../../lib/supabase";
+import React, { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
+import { ChevronLeft, ChevronRight, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
+import { supabase } from "../../../lib/supabase";
+import { getSegmento, documentosDoSegmento, maiuscula, um } from "../../../lib/segmentos";
+import { cpfValido, formatarCPF, formatarTelefone, somenteDigitos } from "../../../lib/validacao";
+import { MolduraPublica, CabecalhoEmpresa, Carregando, NaoEncontrado, campoClasse } from "../../../components/publico/MolduraPublica";
 
-interface Company {
-  id: string;
+interface Empresa {
   name: string;
   logo_url: string | null;
-  primary_color: string;
-  especialidades: string[];
+  primary_color: string | null;
+  especialidades: string[] | null;
+  segmento: string | null;
 }
 
-interface FormData {
-  nome: string;
-  whatsapp: string;
-  cpf: string;
-  email: string;
-  especialidade: string;
-  diaria: string;
-  chave_pix: string;
-}
+type Docs = Record<string, { numero: string; validade?: string }>;
 
-const FORM_VAZIO: FormData = {
-  nome: "", whatsapp: "", cpf: "", email: "",
-  especialidade: "", diaria: "", chave_pix: "",
+const FORM_VAZIO = { nome: "", whatsapp: "", cpf: "", email: "", especialidade: "", diaria: "", chave_pix: "" };
+
+const ERROS: Record<string, string> = {
+  consentimento: "Para enviar, autorize o uso dos seus dados.",
+  dados_invalidos: "Algum dado está incompleto. Confira nome, WhatsApp, CPF e valor.",
+  cpf_duplicado: "Este CPF já está cadastrado nesta empresa.",
+  empresa_nao_encontrada: "Este link de cadastro não está mais ativo.",
 };
 
-const formatarTelefone = (v: string) => {
-  let s = v.replace(/\D/g, "").slice(0, 11);
-  if (s.length > 6) s = s.replace(/^(\d{2})(\d{5})(\d{0,4})/, "($1) $2-$3");
-  else if (s.length > 2) s = s.replace(/^(\d{2})(\d{0,5})/, "($1) $2");
-  else if (s.length > 0) s = s.replace(/^(\d{0,2})/, "($1");
-  return s;
-};
-
-const formatarCPF = (v: string) => {
-  let s = v.replace(/\D/g, "").slice(0, 11);
-  if (s.length > 9) s = s.replace(/^(\d{3})(\d{3})(\d{3})(\d{0,2})/, "$1.$2.$3-$4");
-  else if (s.length > 6) s = s.replace(/^(\d{3})(\d{3})(\d{0,3})/, "$1.$2.$3");
-  else if (s.length > 3) s = s.replace(/^(\d{3})(\d{0,3})/, "$1.$2");
-  return s;
-};
-
-export default function CadastroPublicoPage() {
+export default function CadastroProfissionalPage() {
   const params = useParams();
-  const slug = typeof params.slug === "string" ? params.slug : Array.isArray(params.slug) ? params.slug[0] : "";
+  const slug = typeof params.slug === "string" ? params.slug : "";
 
-  const [company, setCompany]     = useState<Company | null>(null);
-  const [notFound, setNotFound]   = useState(false);
+  const [empresa, setEmpresa]     = useState<Empresa | null>(null);
+  const [carregando, setCarregando] = useState(true);
   const [step, setStep]           = useState(1);
-  const [form, setForm]           = useState<FormData>(FORM_VAZIO);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [form, setForm]           = useState(FORM_VAZIO);
+  const [docs, setDocs]           = useState<Docs>({});
+  const [consentimento, setConsentimento] = useState(false);
+  const [enviando, setEnviando]   = useState(false);
   const [sucesso, setSucesso]     = useState(false);
   const [erro, setErro]           = useState("");
 
   useEffect(() => {
-    if (slug) carregarEmpresa();
+    if (!slug) return;
+    supabase.rpc("empresa_publica", { p_slug: slug }).then(({ data }) => {
+      const e = data as Empresa | null;
+      setEmpresa(e);
+      if (e?.especialidades?.length) setForm((f) => ({ ...f, especialidade: e.especialidades![0] }));
+      setCarregando(false);
+    });
   }, [slug]);
 
-  const carregarEmpresa = async () => {
-    const { data, error } = await supabase
-      .from("companies")
-      .select("id, name, logo_url, primary_color, especialidades")
-      .eq("slug", slug)
-      .single();
+  if (carregando) return <Carregando />;
+  if (!empresa) return <NaoEncontrado titulo="Empresa não encontrada" texto="O link que você acessou não é válido." />;
 
-    if (error || !data) {
-      setNotFound(true);
-    } else {
-      setCompany(data);
-      if (data.especialidades?.length > 0) {
-        setForm(f => ({ ...f, especialidade: data.especialidades[0] }));
-      }
-    }
-    setIsLoading(false);
-  };
-
-  const cor = company?.primary_color ?? "#22c55e";
+  const cor = empresa.primary_color ?? "#8b5cf6";
+  const termos = getSegmento(empresa.segmento).termos;
+  const documentos = documentosDoSegmento(empresa.segmento);
+  const set = (campo: keyof typeof FORM_VAZIO, valor: string) => setForm({ ...form, [campo]: valor });
 
   const validarStep1 = () => {
-    if (!form.nome.trim()) { setErro("Nome completo é obrigatório"); return false; }
-    if (form.whatsapp.replace(/\D/g, "").length < 10) { setErro("WhatsApp inválido"); return false; }
-    if (form.cpf.replace(/\D/g, "").length < 11) { setErro("CPF inválido"); return false; }
-    setErro(""); return true;
+    if (form.nome.trim().length < 3) return "Informe seu nome completo.";
+    if (somenteDigitos(form.whatsapp).length < 10) return "Confira o número de WhatsApp.";
+    if (!cpfValido(form.cpf)) return "CPF inválido. Confira os números.";
+    return "";
   };
-
   const validarStep2 = () => {
-    if (!form.especialidade) { setErro("Selecione uma especialidade"); return false; }
-    if (!form.diaria || Number(form.diaria) <= 0) { setErro("Informe sua diária base"); return false; }
-    setErro(""); return true;
+    if (!form.especialidade) return "Escolha sua função.";
+    if (!form.diaria || Number(form.diaria) <= 0) return "Informe o seu valor base.";
+    return "";
   };
 
   const avancar = () => {
-    if (step === 1 && !validarStep1()) return;
-    if (step === 2 && !validarStep2()) return;
-    setStep(s => s + 1);
+    const msg = step === 1 ? validarStep1() : step === 2 ? validarStep2() : "";
+    setErro(msg);
+    if (!msg) setStep(step + 1);
   };
 
-  const voltar = () => { setErro(""); setStep(s => s - 1); };
-
-  const handleSubmit = async () => {
-    if (!company) return;
-    setIsSubmitting(true);
+  const enviar = async () => {
+    if (!consentimento) { setErro(ERROS.consentimento); return; }
+    setEnviando(true);
     setErro("");
-
-    const cpfLimpo = form.cpf.replace(/\D/g, "");
-    const { data: existente } = await supabase
-      .from("freelancers")
-      .select("id")
-      .eq("company_id", company.id)
-      .eq("cpf", cpfLimpo)
-      .maybeSingle();
-
-    if (existente) {
-      setErro("Este CPF já está cadastrado na base desta empresa.");
-      setIsSubmitting(false);
+    const docsPreenchidos = Object.fromEntries(
+      Object.entries(docs).filter(([, d]) => d.numero.trim() || d.validade)
+    );
+    const { data, error } = await supabase.rpc("cadastrar_profissional", {
+      p_slug: slug, p_nome: form.nome, p_telefone: form.whatsapp, p_cpf: form.cpf,
+      p_email: form.email, p_especialidade: form.especialidade, p_diaria: Number(form.diaria),
+      p_chave_pix: form.chave_pix, p_consentimento: consentimento, p_documentos: docsPreenchidos,
+    });
+    setEnviando(false);
+    if (error) {
+      setErro(error.message.includes("LIMITE_PLANO")
+        ? "A base desta empresa está cheia no momento. Avise a empresa pelo WhatsApp."
+        : "Não foi possível enviar agora. Tente de novo em instantes.");
       return;
     }
-
-    const { error } = await supabase.from("freelancers").insert([{
-      company_id:    company.id,
-      nome:          form.nome.trim(),
-      telefone:      form.whatsapp.replace(/\D/g, ""),
-      cpf:           cpfLimpo,
-      email:         form.email.trim() || null,
-      especialidade: form.especialidade,
-      diaria:        Number(form.diaria),
-      chave_pix:     form.chave_pix.trim() || null,
-      status:        "disponivel",
-      avaliacao:     5.0,
-    }]);
-
-    if (error) {
-      setErro("Erro ao enviar cadastro. Tente novamente.");
-    } else {
-      setSucesso(true);
-    }
-    setIsSubmitting(false);
+    if (data === "ok") setSucesso(true);
+    else setErro(ERROS[data as string] ?? "Não foi possível enviar agora.");
   };
-
-  if (isLoading) {
-    return (
-      <div style={{ minHeight: "100vh", background: "#0a0a0a", display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <Loader2 size={32} color="#555" className="animate-spin" />
-      </div>
-    );
-  }
-
-  if (notFound || !company) {
-    return (
-      <div style={{ minHeight: "100vh", background: "#0a0a0a", display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }}>
-        <div style={{ textAlign: "center" }}>
-          <AlertCircle size={48} color="#444" style={{ margin: "0 auto 1rem" }} />
-          <h1 style={{ color: "#fff", fontSize: "1.25rem", fontWeight: 700, marginBottom: "0.5rem" }}>Empresa não encontrada</h1>
-          <p style={{ color: "#666", fontSize: "0.875rem" }}>O link que você acessou não é válido.</p>
-        </div>
-      </div>
-    );
-  }
 
   if (sucesso) {
     return (
-      <div style={{ minHeight: "100vh", background: "#0a0a0a", display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }}>
-        <div style={{ textAlign: "center", maxWidth: "24rem" }}>
-          <div style={{ width: 80, height: 80, borderRadius: "50%", background: cor + "20", border: `1px solid ${cor}40`, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 1.5rem" }}>
-            <CheckCircle2 size={40} color={cor} />
+      <MolduraPublica>
+        <div className="rounded-2xl border border-white/10 bg-arx-surface p-8 text-center">
+          <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full" style={{ background: `${cor}22` }}>
+            <CheckCircle2 size={34} style={{ color: cor }} />
           </div>
-          <h1 style={{ color: "#fff", fontSize: "1.5rem", fontWeight: 700, marginBottom: "0.5rem" }}>Cadastro Enviado!</h1>
-          <p style={{ color: "#999", fontSize: "0.875rem" }}>
-            Seu cadastro foi recebido por <strong style={{ color: "#fff" }}>{company.name}</strong>.
-            Entraremos em contato pelo WhatsApp quando houver um job disponível.
+          <h1 className="text-[22px] font-semibold text-white">Cadastro enviado!</h1>
+          <p className="mt-2 text-[15px] text-arx-mist">
+            Você entrou na base da <strong className="text-white">{empresa.name}</strong>. Quando
+            houver {um(termos.generoJob)} {termos.job} para você, o convite chega pelo WhatsApp.
           </p>
         </div>
-      </div>
+      </MolduraPublica>
     );
   }
 
+  const etapas = ["Seus dados", "Função e valor", "Finalizar"];
+
   return (
-    <div style={{ minHeight: "100vh", background: "#0a0a0a", overflowY: "auto", padding: "2rem 1rem" }}>
-      <div style={{ maxWidth: "32rem", margin: "0 auto" }}>
-        <div style={{ background: "#121212", border: "1px solid #222", borderRadius: "1rem", overflow: "hidden" }}>
+    <MolduraPublica>
+      <div className="overflow-hidden rounded-2xl border border-white/10 bg-arx-surface">
+        <CabecalhoEmpresa nome={empresa.name} logo={empresa.logo_url} cor={cor}
+          subtitulo={`Cadastro de ${maiuscula(termos.profissional)}`} />
 
-          {/* Header */}
-          <div style={{ background: "#161616", padding: "2rem", textAlign: "center", borderBottom: "1px solid #222" }}>
-            {company.logo_url ? (
-              <img src={company.logo_url} alt={company.name} style={{ height: 48, margin: "0 auto 1rem", objectFit: "contain" }} />
-            ) : (
-              <div style={{ width: 48, height: 48, borderRadius: "0.75rem", background: cor + "20", border: `1px solid ${cor}40`, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 1rem" }}>
-                <UserPlus size={24} color={cor} />
+        <ol className="flex justify-between gap-2 px-6 pt-6">
+          {etapas.map((rotulo, i) => (
+            <li key={rotulo} className="flex flex-1 flex-col items-center gap-1.5 text-center">
+              <span className="flex h-8 w-8 items-center justify-center rounded-full text-[13px] font-bold"
+                style={step > i ? { background: cor, color: "#fff" } : { background: "#182030", color: "#5e7a94" }}>
+                {step > i + 1 ? <CheckCircle2 size={15} /> : i + 1}
+              </span>
+              <span className="text-[11px] text-arx-slate">{rotulo}</span>
+            </li>
+          ))}
+        </ol>
+
+        <div className="space-y-4 px-6 py-6">
+          {step === 1 && (
+            <>
+              <Campo rotulo="Nome completo *">
+                <input value={form.nome} onChange={(e) => set("nome", e.target.value)} autoComplete="name"
+                  placeholder="Seu nome completo" className={campoClasse} />
+              </Campo>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <Campo rotulo="WhatsApp *">
+                  <input value={form.whatsapp} onChange={(e) => set("whatsapp", formatarTelefone(e.target.value))}
+                    inputMode="tel" autoComplete="tel" placeholder="(00) 00000-0000" maxLength={15} className={campoClasse} />
+                </Campo>
+                <Campo rotulo="CPF *">
+                  <input value={form.cpf} onChange={(e) => set("cpf", formatarCPF(e.target.value))}
+                    inputMode="numeric" placeholder="000.000.000-00" maxLength={14} className={campoClasse} />
+                </Campo>
               </div>
-            )}
-            <h1 style={{ color: "#fff", fontSize: "1.25rem", fontWeight: 700 }}>{company.name}</h1>
-            <p style={{ color: "#999", fontSize: "0.875rem", marginTop: "0.25rem" }}>Cadastro de Freelancer</p>
-          </div>
+              <Campo rotulo="E-mail (opcional)">
+                <input type="email" value={form.email} onChange={(e) => set("email", e.target.value)} autoComplete="email"
+                  placeholder="seu@email.com" className={campoClasse} />
+              </Campo>
+            </>
+          )}
 
-          {/* Steps */}
-          <div style={{ padding: "1.5rem 2rem 0" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", position: "relative", marginBottom: "2rem" }}>
-              <div style={{ position: "absolute", left: 0, right: 0, top: 16, height: 1, background: "#222", zIndex: 0 }}></div>
-              {[1, 2, 3].map(s => (
-                <div key={s} style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-                  <div style={{
-                    width: 32, height: 32, borderRadius: "50%",
-                    background: step >= s ? cor : "#1a1a1a",
-                    border: step >= s ? "none" : "1px solid #333",
-                    color: step >= s ? "#fff" : "#555",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    fontSize: "0.75rem", fontWeight: 700
-                  }}>
-                    {step > s ? <CheckCircle2 size={14} /> : s}
+          {step === 2 && (
+            <>
+              <Campo rotulo="Função principal *">
+                <select value={form.especialidade} onChange={(e) => set("especialidade", e.target.value)} className={campoClasse}>
+                  {(empresa.especialidades ?? []).map((esp) => <option key={esp} value={esp}>{esp}</option>)}
+                </select>
+              </Campo>
+              <Campo rotulo={`Seu valor base por ${termos.pagamento === "cachê" ? "cachê" : "diária"} (R$) *`}>
+                <input type="number" min="1" inputMode="decimal" value={form.diaria}
+                  onChange={(e) => set("diaria", e.target.value)} placeholder="Ex.: 250" className={campoClasse} />
+              </Campo>
+              <Campo rotulo="Chave PIX (opcional)">
+                <input value={form.chave_pix} onChange={(e) => set("chave_pix", e.target.value)}
+                  placeholder="CPF, e-mail, telefone ou chave aleatória" className={campoClasse} />
+              </Campo>
+
+              {documentos.length > 0 && (
+                <fieldset className="rounded-xl border border-white/10 p-4">
+                  <legend className="px-1 text-[13px] text-arx-mist">Documentos e cursos (opcional)</legend>
+                  <div className="space-y-3">
+                    {documentos.map((d) => (
+                      <div key={d.id} className={d.validade ? "grid grid-cols-[1fr_9.5rem] gap-2" : ""}>
+                        <input value={docs[d.id]?.numero ?? ""} aria-label={d.nome} placeholder={d.nome}
+                          onChange={(e) => setDocs({ ...docs, [d.id]: { ...docs[d.id], numero: e.target.value } })}
+                          className={`${campoClasse} py-2.5 text-[14px]`} />
+                        {d.validade && (
+                          <input type="date" aria-label={`Validade — ${d.nome}`} value={docs[d.id]?.validade ?? ""}
+                            onChange={(e) => setDocs({ ...docs, [d.id]: { numero: docs[d.id]?.numero ?? "", validade: e.target.value } })}
+                            className={`${campoClasse} py-2.5 text-[14px]`} />
+                        )}
+                      </div>
+                    ))}
                   </div>
-                  <span style={{ fontSize: "0.625rem", color: "#666", whiteSpace: "nowrap" }}>
-                    {s === 1 ? "Dados Pessoais" : s === 2 ? "Especialidade" : "Finalizar"}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
+                  <p className="mt-2 text-[12px] text-arx-slate">Informe o número; nos cursos, a data de validade.</p>
+                </fieldset>
+              )}
+            </>
+          )}
 
-          {/* Form */}
-          <div style={{ padding: "0 2rem 1rem" }}>
-
-            {step === 1 && (
-              <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-                <div>
-                  <label style={{ display: "block", fontSize: "0.75rem", color: "#999", marginBottom: "0.25rem" }}>Nome Completo *</label>
-                  <input type="text" value={form.nome} onChange={e => setForm({ ...form, nome: e.target.value })}
-                    placeholder="Seu nome completo"
-                    style={{ width: "100%", background: "#0a0a0a", border: "1px solid #333", borderRadius: "0.5rem", padding: "0.75rem", fontSize: "0.875rem", color: "#fff", outline: "none", boxSizing: "border-box" }} />
-                </div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
-                  <div>
-                    <label style={{ display: "block", fontSize: "0.75rem", color: "#999", marginBottom: "0.25rem" }}>WhatsApp *</label>
-                    <input type="text" value={form.whatsapp} onChange={e => setForm({ ...form, whatsapp: formatarTelefone(e.target.value) })}
-                      placeholder="(00) 00000-0000" maxLength={15}
-                      style={{ width: "100%", background: "#0a0a0a", border: "1px solid #333", borderRadius: "0.5rem", padding: "0.75rem", fontSize: "0.875rem", color: "#fff", outline: "none", boxSizing: "border-box" }} />
-                  </div>
-                  <div>
-                    <label style={{ display: "block", fontSize: "0.75rem", color: "#999", marginBottom: "0.25rem" }}>CPF *</label>
-                    <input type="text" value={form.cpf} onChange={e => setForm({ ...form, cpf: formatarCPF(e.target.value) })}
-                      placeholder="000.000.000-00" maxLength={14}
-                      style={{ width: "100%", background: "#0a0a0a", border: "1px solid #333", borderRadius: "0.5rem", padding: "0.75rem", fontSize: "0.875rem", color: "#fff", outline: "none", boxSizing: "border-box" }} />
-                  </div>
-                </div>
-                <div>
-                  <label style={{ display: "block", fontSize: "0.75rem", color: "#999", marginBottom: "0.25rem" }}>E-mail <span style={{ color: "#555" }}>(opcional)</span></label>
-                  <input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })}
-                    placeholder="seu@email.com"
-                    style={{ width: "100%", background: "#0a0a0a", border: "1px solid #333", borderRadius: "0.5rem", padding: "0.75rem", fontSize: "0.875rem", color: "#fff", outline: "none", boxSizing: "border-box" }} />
-                </div>
-              </div>
-            )}
-
-            {step === 2 && (
-              <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-                <div>
-                  <label style={{ display: "block", fontSize: "0.75rem", color: "#999", marginBottom: "0.25rem" }}>Especialidade Principal *</label>
-                  <select value={form.especialidade} onChange={e => setForm({ ...form, especialidade: e.target.value })}
-                    style={{ width: "100%", background: "#0a0a0a", border: "1px solid #333", borderRadius: "0.5rem", padding: "0.75rem", fontSize: "0.875rem", color: "#fff", outline: "none", cursor: "pointer", boxSizing: "border-box" }}>
-                    {company.especialidades.map(esp => <option key={esp} value={esp}>{esp}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label style={{ display: "block", fontSize: "0.75rem", color: "#999", marginBottom: "0.25rem" }}>Valor da Diária Base (R$) *</label>
-                  <input type="number" min="1" value={form.diaria} onChange={e => setForm({ ...form, diaria: e.target.value })}
-                    placeholder="Ex: 350"
-                    style={{ width: "100%", background: "#0a0a0a", border: "1px solid #333", borderRadius: "0.5rem", padding: "0.75rem", fontSize: "0.875rem", color: "#fff", outline: "none", boxSizing: "border-box" }} />
-                </div>
-                <div>
-                  <label style={{ display: "block", fontSize: "0.75rem", color: "#999", marginBottom: "0.25rem" }}>Chave PIX <span style={{ color: "#555" }}>(opcional)</span></label>
-                  <input type="text" value={form.chave_pix} onChange={e => setForm({ ...form, chave_pix: e.target.value })}
-                    placeholder="CPF, e-mail, telefone ou chave aleatória"
-                    style={{ width: "100%", background: "#0a0a0a", border: "1px solid #333", borderRadius: "0.5rem", padding: "0.75rem", fontSize: "0.875rem", color: "#fff", outline: "none", boxSizing: "border-box" }} />
-                </div>
-              </div>
-            )}
-
-            {step === 3 && (
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-                <p style={{ fontSize: "0.875rem", color: "#999", marginBottom: "0.5rem" }}>Revise seus dados antes de enviar:</p>
+          {step === 3 && (
+            <>
+              <p className="text-[14px] text-arx-mist">Confira seus dados antes de enviar:</p>
+              <dl className="divide-y divide-white/5 overflow-hidden rounded-xl border border-white/10">
                 {[
-                  { label: "Nome", value: form.nome },
-                  { label: "WhatsApp", value: form.whatsapp },
-                  { label: "CPF", value: form.cpf },
-                  { label: "E-mail", value: form.email || "Não informado" },
-                  { label: "Especialidade", value: form.especialidade },
-                  { label: "Diária Base", value: `R$ ${form.diaria},00` },
-                  { label: "Chave PIX", value: form.chave_pix || "Não informada" },
-                ].map(item => (
-                  <div key={item.label} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#0a0a0a", border: "1px solid #222", borderRadius: "0.5rem", padding: "0.625rem 1rem" }}>
-                    <span style={{ fontSize: "0.75rem", color: "#666" }}>{item.label}</span>
-                    <span style={{ fontSize: "0.875rem", color: "#e5e5e5", fontWeight: 500 }}>{item.value}</span>
+                  ["Nome", form.nome], ["WhatsApp", form.whatsapp], ["CPF", form.cpf],
+                  ["E-mail", form.email || "Não informado"], ["Função", form.especialidade],
+                  ["Valor base", `R$ ${form.diaria}`], ["Chave PIX", form.chave_pix || "Não informada"],
+                ].map(([k, v]) => (
+                  <div key={k} className="flex items-center justify-between gap-3 bg-arx-obsidian px-4 py-2.5">
+                    <dt className="text-[13px] text-arx-slate">{k}</dt>
+                    <dd className="truncate text-[14px] text-arx-frost">{v}</dd>
                   </div>
                 ))}
-              </div>
-            )}
+              </dl>
+              <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-white/10 p-4 text-[13px] leading-relaxed text-arx-mist">
+                <input type="checkbox" checked={consentimento} onChange={(e) => setConsentimento(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 shrink-0" style={{ accentColor: cor }} />
+                <span>
+                  Autorizo a <strong className="text-white">{empresa.name}</strong> a guardar estes dados para me
+                  convidar para trabalhos e fazer pagamentos, conforme a LGPD. Posso pedir a exclusão a qualquer
+                  momento direto à empresa. <a href="https://www.arxum.com.br/privacidade" target="_blank" rel="noopener noreferrer" className="text-white underline underline-offset-2">Política de Privacidade</a>
+                </span>
+              </label>
+            </>
+          )}
 
-            {erro && (
-              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginTop: "1rem", background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: "0.5rem", padding: "0.625rem 0.75rem", color: "#f87171", fontSize: "0.875rem" }}>
-                <AlertCircle size={14} /> {erro}
-              </div>
-            )}
-          </div>
-
-          {/* Nav */}
-          <div style={{ padding: "1.5rem 2rem", borderTop: "1px solid #222", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            {step > 1 ? (
-              <button onClick={voltar} style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.875rem", color: "#999", background: "none", border: "none", cursor: "pointer" }}>
-                <ChevronLeft size={16} /> Voltar
-              </button>
-            ) : <div />}
-
-            {step < 3 ? (
-              <button onClick={avancar} style={{ display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.625rem 1.5rem", borderRadius: "0.5rem", fontSize: "0.875rem", fontWeight: 500, color: "#fff", background: cor, border: "none", cursor: "pointer" }}>
-                Próximo <ChevronRight size={16} />
-              </button>
-            ) : (
-              <button onClick={handleSubmit} disabled={isSubmitting} style={{ display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.625rem 1.5rem", borderRadius: "0.5rem", fontSize: "0.875rem", fontWeight: 500, color: "#fff", background: cor, border: "none", cursor: isSubmitting ? "not-allowed" : "pointer", opacity: isSubmitting ? 0.5 : 1 }}>
-                {isSubmitting ? <><Loader2 size={16} className="animate-spin" /> Enviando...</> : <><CheckCircle2 size={16} /> Enviar Cadastro</>}
-              </button>
-            )}
-          </div>
+          {erro && (
+            <div role="alert" className="flex items-start gap-2 rounded-lg border border-red-500/25 bg-red-500/10 px-3 py-2.5 text-[14px] text-red-300">
+              <AlertCircle size={16} className="mt-0.5 shrink-0" /> {erro}
+            </div>
+          )}
         </div>
 
-        <p style={{ textAlign: "center", fontSize: "0.75rem", color: "#444", marginTop: "1.5rem" }}>
-          Powered by <span style={{ color: "#666" }}>ARXUM Crew</span>
-        </p>
+        <div className="flex items-center justify-between border-t border-white/10 px-6 py-5">
+          {step > 1 ? (
+            <button onClick={() => { setErro(""); setStep(step - 1); }} className="flex items-center gap-1.5 text-[14px] text-arx-mist hover:text-white">
+              <ChevronLeft size={16} /> Voltar
+            </button>
+          ) : <span />}
+          {step < 3 ? (
+            <button onClick={avancar} className="flex items-center gap-1.5 rounded-lg px-5 py-2.5 text-[14px] font-semibold text-white" style={{ background: cor }}>
+              Próximo <ChevronRight size={16} />
+            </button>
+          ) : (
+            <button onClick={enviar} disabled={enviando}
+              className="flex items-center gap-2 rounded-lg px-5 py-2.5 text-[14px] font-semibold text-white disabled:opacity-60" style={{ background: cor }}>
+              {enviando ? <><Loader2 size={16} className="animate-spin" /> Enviando...</> : <><CheckCircle2 size={16} /> Enviar cadastro</>}
+            </button>
+          )}
+        </div>
       </div>
-    </div>
+    </MolduraPublica>
+  );
+}
+
+function Campo({ rotulo, children }: { rotulo: string; children: React.ReactNode }) {
+  return (
+    <label className="block">
+      <span className="mb-1.5 block text-[13px] text-arx-mist">{rotulo}</span>
+      {children}
+    </label>
   );
 }

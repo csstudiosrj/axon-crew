@@ -7,7 +7,11 @@ import {
   Copy, QrCode, Clock, AlertCircle
 } from "lucide-react";
 import { supabase } from "../../lib/supabase";
+import Link from "next/link";
 import { useAuth } from "../../lib/auth-context";
+import PixPagamento from "../../components/painel/PixPagamento";
+import { getPlano } from "../../lib/planos";
+import { maiuscula, novo, artigo, de, primeiro, flex, nenhum, um } from "../../lib/segmentos";
 
 const formatBRL = (valor: number): string =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(valor ?? 0);
@@ -33,7 +37,10 @@ interface Pagamento {
 }
 
 export default function FinanceiroPage() {
-  const { companyId } = useAuth();
+  const { companyId, termos, company } = useAuth();
+  const podeExportar = getPlano(company?.plano).exportacao;
+  const [pixAberto, setPixAberto] = useState<string | null>(null);
+  const gJob = termos.generoJob;
 
   const [pagamentos, setPagamentos] = useState<Pagamento[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -126,8 +133,12 @@ export default function FinanceiroPage() {
   };
 
   const exportarCSV = () => {
+    if (!podeExportar) {
+      mostrarToast("A exportação em CSV faz parte dos planos Profissional e Empresa.", "erro");
+      return;
+    }
     const linhas = [
-      ["Freelancer", "Evento", "Data Evento", "Valor", "Chave PIX", "Status", "Data Pagamento"],
+      [maiuscula(termos.profissional), maiuscula(termos.job), `Data ${de(termos.job, gJob)}`, "Valor", "Chave PIX", "Status", "Data Pagamento"],
       ...pagamentosFiltrados.map((p) => [
         p.freelaNome, p.eventoTitulo, formatDataBR(p.eventoData),
         p.valor.toString(), p.chavePix ?? "Não cadastrada", p.status, formatDataBR(p.dataPagamento),
@@ -178,7 +189,7 @@ export default function FinanceiroPage() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
         <div>
           <h2 className="text-2xl font-bold text-white">Financeiro & PIX</h2>
-          <p className="text-sm text-gray-400 mt-1">Gestão de pagamentos de diárias e cachês de staff.</p>
+          <p className="text-sm text-gray-400 mt-1">Pagamentos da sua equipe, {termos.job} a {termos.job}.</p>
         </div>
         <div className="flex gap-3">
           <button onClick={exportarCSV}
@@ -186,10 +197,10 @@ export default function FinanceiroPage() {
             <Download size={18} /> Exportar CSV
           </button>
           <button onClick={() => setModalPix(true)}
-            className="bg-green-600 hover:bg-green-500 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 active:scale-95 flex items-center gap-2 shadow-lg shadow-green-900/20">
+            className="bg-violet-600 hover:bg-violet-500 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 active:scale-95 flex items-center gap-2 shadow-lg shadow-violet-900/20">
             <Wallet size={18} /> Lote PIX
             {pendentesLote.length > 0 && (
-              <span className="bg-green-400/20 text-green-200 text-xs px-1.5 py-0.5 rounded-full">{pendentesLote.length}</span>
+              <span className="bg-white/20 text-white text-xs px-1.5 py-0.5 rounded-full">{pendentesLote.length}</span>
             )}
           </button>
         </div>
@@ -199,7 +210,7 @@ export default function FinanceiroPage() {
         <div className="mb-6 flex items-start gap-3 bg-yellow-500/10 border border-yellow-500/20 rounded-xl px-4 py-3">
           <AlertCircle size={18} className="text-yellow-500 mt-0.5 shrink-0" />
           <p className="text-sm text-yellow-400">
-            <strong>{semPix.length} freelancer{semPix.length > 1 ? "s" : ""}</strong> com pagamento pendente sem chave PIX:{" "}
+            <strong>{semPix.length} {semPix.length > 1 ? termos.profissionais : termos.profissional}</strong> com pagamento pendente sem chave PIX:{" "}
             <span className="text-yellow-300">{semPix.map((p) => p.freelaNome).join(", ")}</span>.
           </p>
         </div>
@@ -218,7 +229,7 @@ export default function FinanceiroPage() {
           <div className="absolute top-0 right-0 p-4 opacity-5"><CheckCircle2 size={80} /></div>
           <p className="text-sm text-gray-400 font-medium mb-1">Total Pago</p>
           <p className="text-3xl font-bold text-white mb-2">{formatBRL(totais.pagoTotal)}</p>
-          <p className="text-xs text-green-500 flex items-center gap-1"><ArrowDownRight size={13} /> Diárias quitadas</p>
+          <p className="text-xs text-green-500 flex items-center gap-1"><ArrowDownRight size={13} /> Pagamentos quitados</p>
         </div>
         <div className={`p-6 rounded-xl relative overflow-hidden border ${totais.atrasado > 0 ? "bg-red-500/5 border-red-500/20" : "bg-[#121212] border-[#222]"}`}>
           <div className="absolute top-0 right-0 p-4 opacity-5"><AlertTriangle size={80} /></div>
@@ -236,10 +247,10 @@ export default function FinanceiroPage() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
           <input type="text" placeholder="Buscar por freelancer ou evento..." value={busca} onChange={(e) => setBusca(e.target.value)}
-            className="w-full bg-[#121212] border border-[#222] rounded-lg py-2.5 pl-10 pr-4 text-sm text-gray-200 focus:outline-none focus:border-green-500" />
+            className="w-full bg-[#121212] border border-[#222] rounded-lg py-2.5 pl-10 pr-4 text-sm text-gray-200 focus:outline-none focus:border-violet-500" />
         </div>
         <select value={filtroStatus} onChange={(e) => setFiltroStatus(e.target.value)}
-          className="bg-[#121212] border border-[#222] text-gray-300 text-sm rounded-lg py-2.5 px-4 focus:outline-none focus:border-green-500 cursor-pointer">
+          className="bg-[#121212] border border-[#222] text-gray-300 text-sm rounded-lg py-2.5 px-4 focus:outline-none focus:border-violet-500 cursor-pointer">
           <option value="todos">Todos os Status</option>
           <option value="pendente">Aguardando Pagamento</option>
           <option value="atrasado">Atrasados</option>
@@ -252,8 +263,8 @@ export default function FinanceiroPage() {
           <table className="w-full text-left text-sm whitespace-nowrap">
             <thead className="bg-[#161616] text-gray-400 border-b border-[#222]">
               <tr>
-                <th className="px-6 py-4 font-medium">Freelancer</th>
-                <th className="px-6 py-4 font-medium">Evento / Job</th>
+                <th className="px-6 py-4 font-medium">{maiuscula(termos.profissional)}</th>
+                <th className="px-6 py-4 font-medium">{maiuscula(termos.job)}</th>
                 <th className="px-6 py-4 font-medium">Valor</th>
                 <th className="px-6 py-4 font-medium">Chave PIX</th>
                 <th className="px-6 py-4 font-medium">Status</th>
@@ -299,12 +310,13 @@ export default function FinanceiroPage() {
                     <td className="px-6 py-4 text-right">
                       {pagamento.status !== "pago" ? (
                         <button onClick={() => setModalConfirmarPgto(pagamento)}
-                          className="bg-transparent border border-[#333] hover:border-green-500 hover:text-green-500 text-gray-400 px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-200 active:scale-95">
+                          className="bg-transparent border border-[#333] hover:border-violet-500 hover:text-violet-300 text-gray-400 px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-200 active:scale-95">
                           Marcar Pago
                         </button>
                       ) : (
-                        <span className="text-green-500 flex items-center justify-end gap-1 text-xs font-medium">
-                          <Check size={14} /> Quitado
+                        <span className="flex items-center justify-end gap-3 text-xs font-medium">
+                          <span className="text-green-500 flex items-center gap-1"><Check size={14} /> Quitado</span>
+                          <Link href={`/documento/${pagamento.id}?tipo=recibo`} className="text-violet-300 hover:text-violet-200">Recibo</Link>
                         </span>
                       )}
                     </td>
@@ -325,16 +337,22 @@ export default function FinanceiroPage() {
             </div>
             <h3 className="text-lg font-bold text-white mb-2">Confirmar Pagamento?</h3>
             <div className="bg-[#0a0a0a] border border-[#333] rounded-lg p-3 mb-4 text-left">
-              <p className="text-sm text-gray-400">Freelancer: <span className="text-white font-medium">{modalConfirmarPgto.freelaNome}</span></p>
-              <p className="text-sm text-gray-400">Evento: <span className="text-white font-medium">{modalConfirmarPgto.eventoTitulo}</span></p>
+              <p className="text-sm text-gray-400">{maiuscula(termos.profissional)}: <span className="text-white font-medium">{modalConfirmarPgto.freelaNome}</span></p>
+              <p className="text-sm text-gray-400">{maiuscula(termos.job)}: <span className="text-white font-medium">{modalConfirmarPgto.eventoTitulo}</span></p>
               <p className="text-sm text-gray-400">Valor: <span className="text-green-400 font-bold">{formatBRL(modalConfirmarPgto.valor)}</span></p>
               {modalConfirmarPgto.chavePix && (
                 <div className="flex items-center gap-2 mt-1">
                   <p className="text-sm text-gray-400">PIX:</p>
                   <button onClick={() => copiarPix(modalConfirmarPgto.chavePix!)}
-                    className="flex items-center gap-1 text-green-400 hover:text-green-300 font-mono text-xs">
+                    className="flex items-center gap-1 text-violet-400 hover:text-violet-300 font-mono text-xs">
                     {modalConfirmarPgto.chavePix} <Copy size={11} />
                   </button>
+                </div>
+              )}
+              {modalConfirmarPgto.chavePix && (
+                <div className="mt-3 pt-3 border-t border-[#222]">
+                  <PixPagamento chave={modalConfirmarPgto.chavePix} nome={modalConfirmarPgto.freelaNome}
+                    valor={modalConfirmarPgto.valor} aoCopiar={() => mostrarToast("PIX copia e cola copiado!", "sucesso")} />
                 </div>
               )}
               {!modalConfirmarPgto.chavePix && (
@@ -344,7 +362,7 @@ export default function FinanceiroPage() {
             <p className="text-sm text-gray-400 mb-5">Você confirma que o PIX já foi transferido?</p>
             <div className="flex gap-3">
               <button onClick={() => setModalConfirmarPgto(null)} className="flex-1 py-2.5 rounded-lg border border-[#333] text-gray-300 hover:bg-[#1a1a1a]">Cancelar</button>
-              <button onClick={handleMarcarPago} className="flex-1 py-2.5 rounded-lg bg-green-600 hover:bg-green-500 text-white font-medium transition-all duration-200 active:scale-95">Sim, Confirmar</button>
+              <button onClick={handleMarcarPago} className="flex-1 py-2.5 rounded-lg bg-violet-600 hover:bg-violet-500 text-white font-medium transition-all duration-200 active:scale-95">Sim, Confirmar</button>
             </div>
           </div>
         </div>
@@ -355,7 +373,7 @@ export default function FinanceiroPage() {
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-[#121212] border border-[#222] rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden">
             <div className="flex justify-between items-center p-5 border-b border-[#222]">
-              <h3 className="text-lg font-bold text-white flex items-center gap-2"><Wallet size={18} className="text-green-500" /> Lote de Pagamentos PIX</h3>
+              <h3 className="text-lg font-bold text-white flex items-center gap-2"><Wallet size={18} className="text-violet-400" /> Lote de Pagamentos PIX</h3>
               <button onClick={() => setModalPix(false)} className="text-gray-500 hover:text-white"><X size={20} /></button>
             </div>
             <div className="p-5 max-h-[60vh] overflow-y-auto space-y-3">
@@ -363,7 +381,7 @@ export default function FinanceiroPage() {
                 <div className="text-center py-8">
                   <CheckCircle2 size={40} className="text-green-500 mx-auto mb-3" />
                   <p className="text-green-500 font-medium">Nenhum pagamento pendente!</p>
-                  <p className="text-gray-500 text-sm mt-1">Todos os freelancers foram pagos.</p>
+                  <p className="text-gray-500 text-sm mt-1">Toda a equipe foi paga.</p>
                 </div>
               ) : (
                 <>
@@ -371,11 +389,12 @@ export default function FinanceiroPage() {
                   {semPix.length > 0 && (
                     <div className="flex items-start gap-2 bg-yellow-500/10 border border-yellow-500/20 rounded-lg px-3 py-2 text-xs text-yellow-400">
                       <AlertCircle size={13} className="mt-0.5 shrink-0" />
-                      {semPix.length} freelancer{semPix.length > 1 ? "s" : ""} sem chave PIX cadastrada.
+                      {semPix.length} {semPix.length > 1 ? termos.profissionais : termos.profissional} sem chave PIX cadastrada.
                     </div>
                   )}
                   {pendentesLote.map((pg) => (
-                    <div key={pg.id} className="bg-[#0a0a0a] border border-[#333] p-3 rounded-lg flex justify-between items-start gap-3">
+                    <div key={pg.id} className="bg-[#0a0a0a] border border-[#333] p-3 rounded-lg">
+                    <div className="flex justify-between items-start gap-3">
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-white">{pg.freelaNome}</p>
                         <p className="text-xs text-gray-500 truncate">{pg.eventoTitulo} · {formatDataBR(pg.eventoData)}</p>
@@ -394,7 +413,20 @@ export default function FinanceiroPage() {
                         ) : (
                           <span className="text-xs text-yellow-600 flex items-center gap-1"><AlertCircle size={11} /> Sem PIX</span>
                         )}
+                        {pg.chavePix && (
+                          <button onClick={() => setPixAberto(pixAberto === pg.id ? null : pg.id)}
+                            className="mt-1.5 text-[11px] text-violet-300 hover:text-violet-200">
+                            {pixAberto === pg.id ? "Fechar QR code" : "QR code / copia e cola"}
+                          </button>
+                        )}
                       </div>
+                    </div>
+                    {pixAberto === pg.id && pg.chavePix && (
+                      <div className="mt-3 pt-3 border-t border-[#222]">
+                        <PixPagamento chave={pg.chavePix} nome={pg.freelaNome} valor={pg.valor}
+                          aoCopiar={() => mostrarToast("PIX copia e cola copiado!", "sucesso")} />
+                      </div>
+                    )}
                     </div>
                   ))}
                 </>

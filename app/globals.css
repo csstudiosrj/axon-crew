@@ -1,5 +1,23 @@
 @import "tailwindcss";
 
+/* Paleta da família ARXUM (mesma das páginas Fest, Studio e Edu).
+   Cor do Crew conforme o Manual de Marca v1.2 (#8b5cf6). Botões com texto
+   branco usam o tom forte (#7c3aed) para manter contraste. */
+@theme {
+  --color-arx-obsidian: #07090c;
+  --color-arx-surface: #111820;
+  --color-arx-surface-2: #182030;
+  --color-arx-line: #d8e4f014;
+  --color-arx-frost: #d8e4f0;
+  --color-arx-mist: #9aabbd;
+  --color-arx-slate: #5e7a94;
+  --color-arx-crew: #8b5cf6;
+  --color-arx-crew-strong: #7c3aed;
+  --color-arx-crew-soft: #a78bfa;
+  --font-dm: var(--font-dm-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-logo: var(--font-syne), var(--font-dm-sans), sans-serif;
+}
+
 :root {
   --background: #0a0a0a;
   --foreground: #e5e7eb;

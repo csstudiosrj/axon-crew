@@ -6,7 +6,10 @@ import {
   Users, MessageCircle, AlertTriangle, ChevronDown, ChevronUp
 } from "lucide-react";
 import { supabase } from "../../lib/supabase";
+import Link from "next/link";
 import { useAuth } from "../../lib/auth-context";
+import { maiuscula, novo, artigo, de, primeiro, flex, nenhum, um } from "../../lib/segmentos";
+import { BASE_PATH } from "../../lib/base-path";
 
 interface FreelancerEscalado {
   freelancerId: string;
@@ -15,7 +18,14 @@ interface FreelancerEscalado {
   telefone: string;
   confirmado: boolean;
   confirmadoEm?: string | null;
+  token: string;
+  escalaId: string;
+  resposta: "pendente" | "confirmado" | "recusado";
+  checkinEm?: string | null;
+  checkoutEm?: string | null;
 }
+
+const horaCurta = (iso: string) => new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 
 interface Slot {
   id: string;
@@ -43,7 +53,9 @@ interface CallSheet {
 }
 
 export default function CallSheetsPage() {
-  const { companyId } = useAuth();
+  const { companyId, termos } = useAuth();
+  const gJob = termos.generoJob;
+  const gRot = termos.generoRoteiro;
 
   const [eventos, setEventos] = useState<Evento[]>([]);
   const [callSheets, setCallSheets] = useState<CallSheet[]>([]);
@@ -57,7 +69,8 @@ export default function CallSheetsPage() {
   const [toast, setToast] = useState<{ msg: string; tipo: "sucesso" | "erro" } | null>(null);
 
   const totalConfirmados = freelancers.filter(f => f.confirmado).length;
-  const totalPendentes   = freelancers.filter(f => !f.confirmado).length;
+  const totalPendentes   = freelancers.filter(f => f.resposta === "pendente").length;
+  const totalRecusados   = freelancers.filter(f => f.resposta === "recusado").length;
 
   useEffect(() => { if (companyId) carregarDados(); }, [companyId]);
 
@@ -90,6 +103,11 @@ export default function CallSheetsPage() {
                   telefone:     f.telefone,
                   confirmado:   esc.confirmado ?? false,
                   confirmadoEm: esc.confirmado_em ?? null,
+                  token:        esc.token,
+                  escalaId:     esc.id,
+                  resposta:     esc.resposta ?? (esc.confirmado ? "confirmado" : "pendente"),
+                  checkinEm:    esc.checkin_em ?? null,
+                  checkoutEm:   esc.checkout_em ?? null,
                 };
               }).filter(Boolean) as FreelancerEscalado[];
               return { ...slot, freelancers: freelas };
@@ -109,7 +127,7 @@ export default function CallSheetsPage() {
     setTimeout(() => setToast(null), 3500);
   };
 
-  const getBaseUrl = () => typeof window !== "undefined" ? window.location.origin : "";
+  const getBaseUrl = () => typeof window !== "undefined" ? window.location.origin + BASE_PATH : "";
 
   const selecionarEvento = (evento: Evento) => {
     setEventoSelecionado(evento);
@@ -136,7 +154,7 @@ export default function CallSheetsPage() {
         setCallSheetId(data[0].id);
         setPublicado(true);
         setCallSheets([...callSheets, data[0]]);
-        mostrarToast("Call Sheet publicado!", "sucesso");
+        mostrarToast(`${maiuscula(termos.roteiro)} ${flex("publicad", gRot)}!`, "sucesso");
       }
     } else {
       const novoEstado = !publicado;
@@ -145,21 +163,23 @@ export default function CallSheetsPage() {
         .eq("id", callSheetId);
       if (!error) {
         setPublicado(novoEstado);
-        mostrarToast(novoEstado ? "Call Sheet publicado!" : "Call Sheet despublicado", "sucesso");
+        mostrarToast(`${maiuscula(termos.roteiro)} ${flex(novoEstado ? "publicad" : "despublicad", gRot)}`, "sucesso");
       }
     }
   };
 
   const abrirWhatsapp = (freela: FreelancerEscalado) => {
-    if (!eventoSelecionado || !callSheetId) return;
+    if (!eventoSelecionado) return;
     const tel = freela.telefone?.replace(/\D/g, "");
     if (!tel) return;
-    const link = `${getBaseUrl()}/roteiro/${callSheetId}`;
+    // Link individual: confirmação, termo e check-in só daquela pessoa.
+    const link = `${getBaseUrl()}/confirmar/${freela.token}`;
+    const equipe = publicado && callSheetId ? `\n\nEquipe completa: ${getBaseUrl()}/roteiro/${callSheetId}` : "";
     const msg  = encodeURIComponent(
-      `OlÃ¡ ${freela.nome.split(" ")[0]}!\n\n` +
-      `Segue o roteiro do evento *${eventoSelecionado.titulo}*.\n\n` +
-      `Acesse o link abaixo para confirmar sua presenÃ§a:\n${link}\n\n` +
-      `ARXUM Crew`
+      `Olá ${freela.nome.split(" ")[0]}!\n\n` +
+      `Você está na escala ${de(termos.job, gJob)} *${eventoSelecionado.titulo}* (${freela.especialidade}).\n\n` +
+      `Confirme sua presença pelo seu link pessoal:\n${link}${equipe}\n\n` +
+      `${maiuscula(artigo(termos.roteiro, gRot))} e o termo de aceite também ficam nesse link.`
     );
     window.open(`https://wa.me/55${tel}?text=${msg}`, "_blank");
   };
@@ -182,8 +202,8 @@ export default function CallSheetsPage() {
 
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-white">Call Sheets</h2>
-          <p className="text-sm text-gray-400 mt-1">Gerencie e dispare roteiros para sua equipe.</p>
+          <h2 className="text-2xl font-bold text-white">{maiuscula(termos.roteiros)}</h2>
+          <p className="text-sm text-gray-400 mt-1">Publique e envie {termos.roteiros} para a sua equipe.</p>
         </div>
       </div>
 
@@ -191,13 +211,13 @@ export default function CallSheetsPage() {
 
         {/* LISTA DE EVENTOS */}
         <div>
-          <h3 className="text-base font-medium text-white mb-4">Selecione um Evento</h3>
+          <h3 className="text-base font-medium text-white mb-4">Selecione {um(gJob)} {termos.job}</h3>
           {isLoading ? (
             <div className="text-center py-12 text-gray-500">Carregando eventos...</div>
           ) : eventos.length === 0 ? (
             <div className="bg-[#121212] border border-[#222] border-dashed rounded-xl p-12 text-center">
               <ClipboardList size={48} className="mx-auto text-gray-600 mb-4" />
-              <p className="text-gray-400">Nenhum evento com equipe escalada.</p>
+              <p className="text-gray-400">{maiuscula(nenhum(gJob))} {termos.job} com equipe escalada.</p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -209,11 +229,11 @@ export default function CallSheetsPage() {
                 return (
                   <div key={evento.id}
                     onClick={() => selecionarEvento(evento)}
-                    className={`bg-[#121212] border rounded-xl p-4 cursor-pointer transition-colors ${isSelected ? "border-green-500/40 bg-green-500/5" : "border-[#222] hover:border-[#333]"}`}>
+                    className={`bg-[#121212] border rounded-xl p-4 cursor-pointer transition-colors ${isSelected ? "border-violet-500/40 bg-violet-500/5" : "border-[#222] hover:border-[#333]"}`}>
                     <div className="flex justify-between items-start">
                       <div>
                         <p className="text-sm font-semibold text-white">{evento.titulo}</p>
-                        <p className="text-xs text-gray-500 mt-0.5">{formatarData(evento.data)} Â· {evento.local}</p>
+                        <p className="text-xs text-gray-500 mt-0.5">{formatarData(evento.data)} · {evento.local}</p>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
                         {cs?.publicado ? (
@@ -238,7 +258,7 @@ export default function CallSheetsPage() {
           {!eventoSelecionado ? (
             <div className="bg-[#121212] border border-[#222] border-dashed rounded-xl p-12 text-center h-full flex flex-col items-center justify-center">
               <ClipboardList size={48} className="text-gray-600 mb-4" />
-              <p className="text-gray-400 text-sm">Selecione um evento ao lado para gerenciar o call sheet.</p>
+              <p className="text-gray-400 text-sm">Selecione {um(gJob)} {termos.job} ao lado para gerenciar {artigo(termos.roteiro, gRot)}.</p>
             </div>
           ) : (
             <div className="bg-[#121212] border border-[#222] rounded-xl overflow-hidden">
@@ -248,17 +268,17 @@ export default function CallSheetsPage() {
                 <div className="flex justify-between items-start">
                   <div>
                     <h3 className="text-base font-bold text-white">{eventoSelecionado.titulo}</h3>
-                    <p className="text-xs text-gray-500 mt-0.5">{formatarData(eventoSelecionado.data)} Â· {eventoSelecionado.local}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">{formatarData(eventoSelecionado.data)} · {eventoSelecionado.local}</p>
                   </div>
                   <div className="flex gap-2">
-                    {publicado && freelancers.length > 0 && (
+                    {freelancers.length > 0 && (
                       <button onClick={() => setModalDisparar(true)}
                         className="bg-[#25D366] hover:bg-[#20bd5a] text-white px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all duration-200 active:scale-95">
                         <Send size={13} /> Disparar
                       </button>
                     )}
                     <button onClick={handleCriarOuPublicar}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all duration-200 active:scale-95 ${publicado ? "bg-[#222] hover:bg-[#333] text-gray-300 border border-[#333]" : "bg-green-600 hover:bg-green-500 text-white"}`}>
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all duration-200 active:scale-95 ${publicado ? "bg-[#222] hover:bg-[#333] text-gray-300 border border-[#333]" : "bg-violet-600 hover:bg-violet-500 text-white"}`}>
                       {publicado ? <><X size={13} /> Despublicar</> : <><Plus size={13} /> Publicar</>}
                     </button>
                   </div>
@@ -270,7 +290,7 @@ export default function CallSheetsPage() {
                 {eventoSelecionado.slots.length === 0 ? (
                   <div className="text-center py-8">
                     <Users size={28} className="text-gray-700 mx-auto mb-2" />
-                    <p className="text-sm text-gray-600">Nenhum freelancer escalado.</p>
+                    <p className="text-sm text-gray-600">Ninguém escalado ainda.</p>
                   </div>
                 ) : (
                   eventoSelecionado.slots.map(slot => (
@@ -283,7 +303,7 @@ export default function CallSheetsPage() {
                       {(eventoAberto === slot.id || eventoAberto === null) && (
                         <div className="space-y-2">
                           {slot.freelancers.length === 0 ? (
-                            <p className="text-xs text-gray-600 pl-2">Nenhum profissional escalado nesta funÃ§Ã£o.</p>
+                            <p className="text-xs text-gray-600 pl-2">Nenhum profissional escalado nesta função.</p>
                           ) : (
                             slot.freelancers.map((f) => (
                               <div key={f.freelancerId}
@@ -296,18 +316,23 @@ export default function CallSheetsPage() {
                                   <p className="text-xs text-gray-600 truncate">{f.especialidade}</p>
                                   {f.confirmado && f.confirmadoEm && (
                                     <p className="text-[10px] text-green-600 mt-0.5">
-                                      Ciente Ã s {new Date(f.confirmadoEm).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                                      Confirmou às {horaCurta(f.confirmadoEm)}
+                                      {f.checkinEm && <> · chegou {horaCurta(f.checkinEm)}</>}
+                                      {f.checkoutEm && <> · saiu {horaCurta(f.checkoutEm)}</>}
+                                      {" · "}<Link href={`/documento/${f.escalaId}?tipo=termo`} className="text-violet-300 hover:text-violet-200">ver termo</Link>
                                     </p>
                                   )}
                                 </div>
                                 <div className="flex items-center gap-2 shrink-0">
                                   {f.confirmado ? (
-                                    <span className="text-[10px] font-medium text-green-500 bg-green-500/10 border border-green-500/20 px-2 py-0.5 rounded-full">Ciente</span>
+                                    <span className="text-[10px] font-medium text-green-500 bg-green-500/10 border border-green-500/20 px-2 py-0.5 rounded-full">Confirmado</span>
+                                  ) : f.resposta === "recusado" ? (
+                                    <span className="text-[10px] font-medium text-red-400 bg-red-500/10 border border-red-500/20 px-2 py-0.5 rounded-full">Recusou</span>
                                   ) : (
                                     <span className="text-[10px] font-medium text-gray-600 bg-[#1a1a1a] border border-[#2a2a2a] px-2 py-0.5 rounded-full">Aguardando</span>
                                   )}
-                                  {publicado && f.telefone && (
-                                    <button onClick={() => abrirWhatsapp(f)} title="Enviar roteiro individual"
+                                  {f.telefone && (
+                                    <button onClick={() => abrirWhatsapp(f)} title="Enviar link individual pelo WhatsApp"
                                       className="text-gray-600 hover:text-[#25D366] transition-colors p-1">
                                       <MessageCircle size={14} />
                                     </button>
@@ -334,13 +359,18 @@ export default function CallSheetsPage() {
                     <p className="text-2xl font-bold text-gray-400">{totalPendentes}</p>
                     <p className="text-xs text-gray-600 mt-0.5">Aguardando</p>
                   </div>
+                  {totalRecusados > 0 && (
+                    <div className="col-span-2 bg-red-500/5 border border-red-500/20 rounded-lg px-3 py-2 text-center text-xs text-red-300">
+                      {totalRecusados} {totalRecusados > 1 ? "recusaram" : "recusou"} — escolha substitutos na Agenda.
+                    </div>
+                  )}
                 </div>
               )}
 
-              {/* Link pÃºblico */}
+              {/* Link público */}
               {callSheetId && publicado && (
                 <div className="px-5 pb-5">
-                  <p className="text-xs text-gray-600 mb-1.5">Link pÃºblico do roteiro:</p>
+                  <p className="text-xs text-gray-600 mb-1.5">Link público {de(termos.roteiro, gRot)}:</p>
                   <div className="flex items-center gap-2 bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-3 py-2">
                     <p className="text-xs text-gray-500 flex-1 truncate font-mono">{getBaseUrl()}/roteiro/{callSheetId}</p>
                     <button onClick={() => { navigator.clipboard.writeText(`${getBaseUrl()}/roteiro/${callSheetId}`); mostrarToast("Link copiado!", "sucesso"); }}
@@ -362,7 +392,7 @@ export default function CallSheetsPage() {
             <div className="flex justify-between items-center p-5 border-b border-[#1a1a1a] bg-[#25D366]/10">
               <div>
                 <h3 className="text-base font-bold text-[#25D366] flex items-center gap-2">
-                  <Send size={16} /> Disparar Roteiro em Massa
+                  <Send size={16} /> Enviar {termos.roteiro} para a equipe
                 </h3>
                 <p className="text-xs text-gray-500 mt-0.5">{eventoSelecionado.titulo}</p>
               </div>
@@ -371,7 +401,7 @@ export default function CallSheetsPage() {
             <div className="px-5 pt-4 pb-2">
               <div className="flex items-start gap-2 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-xs text-gray-400">
                 <Info size={13} className="mt-0.5 shrink-0 text-gray-500" />
-                Clique em <strong className="text-white mx-1">Enviar</strong> ao lado de cada freelancer para abrir o WhatsApp com a mensagem pronta.
+                Clique em <strong className="text-white mx-1">Enviar</strong> ao lado de cada pessoa para abrir o WhatsApp com a mensagem pronta.
               </div>
             </div>
             <div className="flex-1 overflow-y-auto px-5 py-3 space-y-2">
@@ -386,7 +416,10 @@ export default function CallSheetsPage() {
                     <p className="text-xs text-gray-600">{f.especialidade}</p>
                   </div>
                   {f.confirmado && (
-                    <span className="text-[10px] text-green-500 bg-green-500/10 border border-green-500/20 px-2 py-0.5 rounded-full shrink-0">Ciente</span>
+                    <span className="text-[10px] text-green-500 bg-green-500/10 border border-green-500/20 px-2 py-0.5 rounded-full shrink-0">Confirmado</span>
+                  )}
+                  {f.resposta === "recusado" && (
+                    <span className="text-[10px] text-red-400 bg-red-500/10 border border-red-500/20 px-2 py-0.5 rounded-full shrink-0">Recusou</span>
                   )}
                   {f.telefone ? (
                     <button onClick={() => abrirWhatsapp(f)}
