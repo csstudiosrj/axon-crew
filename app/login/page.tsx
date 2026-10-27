@@ -74,7 +74,10 @@ function LoginForm() {
               placeholder="voce@suaempresa.com.br" className={inputClass} />
           </div>
           <div>
-            <label htmlFor="senha" className="mb-1.5 block text-[13px] text-arx-mist">Senha</label>
+            <div className="mb-1.5 flex items-center justify-between">
+              <label htmlFor="senha" className="text-[13px] text-arx-mist">Senha</label>
+              <Link href="/recuperar-senha" className="text-[13px] text-arx-slate hover:text-white">Esqueci minha senha</Link>
+            </div>
             <input id="senha" type="password" required autoComplete="current-password"
               value={password} onChange={e => setPassword(e.target.value)}
               placeholder="••••••••" className={inputClass} />
