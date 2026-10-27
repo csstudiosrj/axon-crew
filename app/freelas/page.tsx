@@ -8,7 +8,10 @@ import {
 } from "lucide-react";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../lib/auth-context";
-import { maiuscula, novo, artigo, de, primeiro, flex, nenhum, um } from "../../lib/segmentos";
+import { maiuscula, novo, artigo, de, primeiro, flex, nenhum, um, documentosDoSegmento } from "../../lib/segmentos";
+import { BASE_PATH } from "../../lib/base-path";
+import { notaQualidade, resumoPresenca, type HistoricoEscala } from "../../lib/qualidade";
+import { dataBR } from "../../lib/validacao";
 
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; border: string; dot: string }> = {
@@ -27,6 +30,10 @@ interface Freelancer {
   status: "disponivel" | "em_job" | "indisponivel";
   avaliacao: number;
   created_at?: string;
+  cpf?: string | null;
+  token_acesso?: string;
+  consentimento_em?: string | null;
+  documentos?: Record<string, { numero?: string; validade?: string }>;
 }
 
 interface NovoFreela {
@@ -53,7 +60,7 @@ const FREELA_VAZIO: NovoFreela = {
 };
 
 export default function CrewDashboard() {
-  const { companyId, especialidades, termos } = useAuth();
+  const { companyId, especialidades, termos, company } = useAuth();
   const gJob = termos.generoJob;
 
   const [freelancers, setFreelancers] = useState<Freelancer[]>([]);
@@ -77,6 +84,7 @@ export default function CrewDashboard() {
   const [modalWhatsapp, setModalWhatsapp] = useState<Freelancer | null>(null);
   const [msgWhatsapp, setMsgWhatsapp] = useState("");
   const [modalPerfil, setModalPerfil] = useState<Freelancer | null>(null);
+  const [historico, setHistorico] = useState<HistoricoEscala[]>([]);
 
   useEffect(() => { if (companyId) fetchFreelancers(); }, [companyId]);
 
@@ -89,6 +97,17 @@ export default function CrewDashboard() {
       .order("created_at", { ascending: false });
     if (error) mostrarToast("Erro ao carregar dados do banco", "erro");
     else if (data) setFreelancers(data as Freelancer[]);
+    // Histórico de escalas para a nota de qualidade e o resumo de presença.
+    const { data: esc } = await supabase
+      .from("evento_escalas")
+      .select("freelancer_id, resposta, checkin_em, eventos!inner(data, company_id)")
+      .eq("eventos.company_id", companyId!);
+    if (esc) {
+      setHistorico(esc.map((e: any) => ({
+        freelancer_id: e.freelancer_id, resposta: e.resposta, checkin_em: e.checkin_em,
+        data: (Array.isArray(e.eventos) ? e.eventos[0] : e.eventos)?.data,
+      })));
+    }
     setIsLoading(false);
   };
 
@@ -469,6 +488,47 @@ export default function CrewDashboard() {
                   </div>
                 </div>
               </div>
+              {(() => {
+                const r = resumoPresenca(modalPerfil.id, historico);
+                return (
+                  <div className="grid grid-cols-4 gap-2 text-center">
+                    <div className="rounded-lg bg-[#0a0a0a] border border-[#222] py-2"><p className="text-sm font-semibold text-white">{notaQualidade(modalPerfil, historico).toFixed(1)}</p><p className="text-[10px] text-gray-500">Nota</p></div>
+                    <div className="rounded-lg bg-[#0a0a0a] border border-[#222] py-2"><p className="text-sm font-semibold text-white">{r.trabalhos}</p><p className="text-[10px] text-gray-500">Trabalhos</p></div>
+                    <div className="rounded-lg bg-[#0a0a0a] border border-[#222] py-2"><p className="text-sm font-semibold text-white">{r.recusas}</p><p className="text-[10px] text-gray-500">Recusas</p></div>
+                    <div className="rounded-lg bg-[#0a0a0a] border border-[#222] py-2"><p className="text-sm font-semibold text-white">{r.faltas}</p><p className="text-[10px] text-gray-500">Faltas</p></div>
+                  </div>
+                );
+              })()}
+              {(() => {
+                const docs = documentosDoSegmento(company?.segmento)
+                  .map((d) => ({ ...d, valor: modalPerfil.documentos?.[d.id] }))
+                  .filter((d) => d.valor?.numero || d.valor?.validade);
+                if (docs.length === 0) return null;
+                const hojeIso = new Date().toISOString().slice(0, 10);
+                return (
+                  <div className="rounded-lg border border-[#222] bg-[#0a0a0a] p-3 space-y-1.5">
+                    <p className="text-xs text-gray-500 mb-1">Documentos</p>
+                    {docs.map((d) => {
+                      const vencido = d.valor?.validade && d.valor.validade < hojeIso;
+                      return (
+                        <p key={d.id} className="text-xs flex justify-between gap-2">
+                          <span className="text-gray-300">{d.nome}{d.valor?.numero ? `: ${d.valor.numero}` : ""}</span>
+                          {d.valor?.validade && <span className={vencido ? "text-red-400" : "text-gray-500"}>{vencido ? "Vencido " : "até "}{dataBR(d.valor.validade)}</span>}
+                        </p>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+              {modalPerfil.token_acesso && (
+                <button onClick={() => { navigator.clipboard.writeText(`${window.location.origin}${BASE_PATH}/p/${modalPerfil.token_acesso}`); mostrarToast("Link da área pessoal copiado!", "sucesso"); }}
+                  className="w-full flex items-center justify-center gap-2 rounded-lg border border-[#333] py-2 text-xs text-gray-300 hover:bg-[#1a1a1a]">
+                  <Copy size={13} /> Copiar link da área pessoal (agenda e pagamentos)
+                </button>
+              )}
+              {modalPerfil.consentimento_em && (
+                <p className="text-[11px] text-gray-600 text-center">Consentimento LGPD registrado em {dataBR(modalPerfil.consentimento_em)}.</p>
+              )}
               <div className="pt-2 flex gap-3">
                 <button onClick={() => { setModalPerfil(null); abrirWhatsapp(modalPerfil); }}
                   className="flex-1 py-2.5 rounded-lg bg-[#25D366] hover:bg-[#20bd5a] text-white text-sm font-medium flex items-center justify-center gap-2 transition-all duration-200 active:scale-95">

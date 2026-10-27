@@ -53,9 +53,8 @@ export default function CriarContaPage() {
 
     setEnviando(true);
 
-    const { data: existente } = await supabase
-      .from("companies").select("id").eq("slug", slugFinal).maybeSingle();
-    if (existente) {
+    const { data: disponivel } = await supabase.rpc("slug_disponivel", { p_slug: slugFinal });
+    if (disponivel === false) {
       setErro("Esse endereço de link já está em uso. Escolha outro.");
       setEnviando(false);
       return;

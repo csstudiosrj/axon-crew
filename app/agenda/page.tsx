@@ -8,6 +8,9 @@ import {
 } from "lucide-react";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../lib/auth-context";
+import { BASE_PATH } from "../../lib/base-path";
+import Lembretes from "../../components/painel/Lembretes";
+import { notaQualidade, type HistoricoEscala } from "../../lib/qualidade";
 import { maiuscula, novo, artigo, de, primeiro, flex, nenhum, um } from "../../lib/segmentos";
 
 
@@ -35,6 +38,7 @@ export default function AgendaPage() {
   const [necessidades, setNecessidades] = useState([{ id: Date.now().toString(), especialidade: especialidades[0] ?? "", quantidade: 1, cacheBase: '' }]);
   const [slotsEditando, setSlotsEditando] = useState<any[]>([]);
   const [buscaFreela, setBuscaFreela] = useState("");
+  const [historico, setHistorico] = useState<HistoricoEscala[]>([]);
 
   useEffect(() => { if (companyId) carregarTudo(); }, [companyId]);
 
@@ -50,6 +54,12 @@ export default function AgendaPage() {
       ]);
 
       if (resTodosF.data) setTodosFreelancers(resTodosF.data);
+      if (resEscalas.data && resEv.data) {
+        const datas = Object.fromEntries(resEv.data.map((e: any) => [e.id, e.data]));
+        setHistorico(resEscalas.data.map((e: any) => ({
+          freelancer_id: e.freelancer_id, resposta: e.resposta, checkin_em: e.checkin_em, data: datas[e.evento_id],
+        })));
+      }
       if (resDisponiveisF.data) setFreelancersDisponiveis(resDisponiveisF.data);
 
       if (resEv.data) {
@@ -58,11 +68,18 @@ export default function AgendaPage() {
             .filter(s => s.evento_id === ev.id)
             .map(slot => {
               const escalasDoSlot = (resEscalas.data || []).filter(esc => esc.slot_id === slot.id);
-              const designados = escalasDoSlot.map(esc => {
+              const pessoas = escalasDoSlot.map(esc => {
                 const f = (resTodosF.data || []).find(fr => fr.id === esc.freelancer_id);
-                return f ? { ...f, escala_id: esc.id } : null;
+                return f ? {
+                  ...f, escala_id: esc.id, token: esc.token,
+                  resposta: esc.resposta ?? (esc.confirmado ? 'confirmado' : 'pendente'),
+                  motivo_recusa: esc.motivo_recusa, checkin_em: esc.checkin_em,
+                } : null;
               }).filter(Boolean);
-              return { ...slot, designados };
+              // Quem recusou não ocupa a vaga: aparece à parte, pedindo substituto.
+              const designados = pessoas.filter((p: any) => p.resposta !== 'recusado');
+              const recusados = pessoas.filter((p: any) => p.resposta === 'recusado');
+              return { ...slot, designados, recusados };
             });
           return { ...ev, slots: slotsDoEvento };
         });
@@ -97,6 +114,9 @@ export default function AgendaPage() {
           if (!faltasPorEvento[evento.id]) faltasPorEvento[evento.id] = { titulo: evento.titulo, faltas: [] };
           faltasPorEvento[evento.id].faltas.push(`${faltam} ${slot.especialidade}`);
         }
+        (slot.recusados || []).forEach((freela: any) => {
+          novosAlertas.push({ id: `recusa-${freela.escala_id}`, tipo: 'falta', titulo: `${freela.nome} recusou: ${evento.titulo}`, desc: `Escolha um substituto para ${slot.especialidade}.` });
+        });
         slot.designados.forEach((freela: any) => {
           const horario = evento.horario_inicio || 'sem-horario';
           const key = `${freela.id}_${evento.data}_${horario}`;
@@ -230,7 +250,7 @@ export default function AgendaPage() {
     const msg = encodeURIComponent(
       `Olá ${freela.nome}!\n\nVocê está na escala ${de(termos.job, gJob)} *${evento.titulo}*.\n\n` +
       `Data: ${data}${horario}\nLocal: ${evento.local}\nFunção: ${slot.especialidade}\n${maiuscula(termos.pagamento)}: R$ ${slot.cache_base},00\n\n` +
-      `Por favor, confirme sua presença respondendo esta mensagem.\n\nARXUM Crew`
+      `Confirme sua presença e aceite o termo pelo seu link pessoal:\n${window.location.origin}${BASE_PATH}/confirmar/${freela.token}`
     );
     return `https://wa.me/55${tel}?text=${msg}`;
   };
@@ -403,7 +423,7 @@ export default function AgendaPage() {
         </div>
 
         <div className="space-y-6">
-          <div className="bg-[#121212] border border-[#222] rounded-xl p-5 sticky top-6">
+          <div className="bg-[#121212] border border-[#222] rounded-xl p-5">
             <h3 className="text-base font-medium text-white mb-4 flex items-center gap-2">
               <Clock size={18} className="text-violet-400" /> Alertas de Escala
             </h3>
@@ -425,6 +445,7 @@ export default function AgendaPage() {
               )}
             </div>
           </div>
+          <Lembretes eventos={eventos} termos={termos} />
         </div>
       </div>
 
@@ -669,7 +690,11 @@ export default function AgendaPage() {
                                     </div>
                                     <div>
                                       <p className="text-sm font-medium text-gray-200">{freela.nome}</p>
-                                      <p className="text-xs text-gray-500">{freela.telefone}</p>
+                                      <p className="text-xs">
+                                        {freela.resposta === 'confirmado'
+                                          ? <span className="text-green-500">{freela.checkin_em ? 'Chegou ' + new Date(freela.checkin_em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : 'Confirmado'}</span>
+                                          : <span className="text-yellow-500">Aguardando resposta</span>}
+                                      </p>
                                     </div>
                                   </div>
                                   <div className="flex items-center gap-1">
@@ -687,6 +712,24 @@ export default function AgendaPage() {
                                 </div>
                               );
                             })}
+                          </div>
+                        )}
+                        {(slot.recusados || []).length > 0 && (
+                          <div className="mt-3 space-y-2">
+                            {slot.recusados.map((r: any) => (
+                              <div key={r.escala_id} className="flex items-center justify-between gap-3 rounded-lg border border-red-500/20 bg-red-500/5 px-3 py-2.5">
+                                <div className="min-w-0">
+                                  <p className="text-sm text-red-300">{r.nome} recusou</p>
+                                  {r.motivo_recusa && <p className="text-xs text-gray-500 truncate">“{r.motivo_recusa}”</p>}
+                                </div>
+                                <div className="flex shrink-0 items-center gap-1">
+                                  <button onClick={() => setModalSelecionarFreela({ eventoId: modalEscala.id, slotId: slot.id, especialidade: slot.especialidade, cacheBase: slot.cache_base })}
+                                    className="rounded-md bg-violet-600 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-violet-500">Escolher substituto</button>
+                                  <button onClick={() => handleRemoverFreela(r.escala_id)} title="Tirar da lista"
+                                    className="p-1.5 text-gray-500 hover:text-red-500 rounded"><X size={15} /></button>
+                                </div>
+                              </div>
+                            ))}
                           </div>
                         )}
                       </div>
@@ -719,10 +762,16 @@ export default function AgendaPage() {
             </div>
             <div className="overflow-y-auto flex-1 p-2">
               {(() => {
-                const filtrados = freelancersDisponiveis.filter(f =>
-                  f.especialidade === modalSelecionarFreela.especialidade &&
-                  f.nome.toLowerCase().includes(buscaFreela.toLowerCase())
-                );
+                const evento = eventos.find((e: any) => e.id === modalSelecionarFreela.eventoId);
+                const jaNoEvento = new Set((evento?.slots || []).flatMap((s: any) => [...s.designados, ...(s.recusados || [])].map((d: any) => d.id)));
+                // Ordena pela nota de qualidade (avaliação + presença): o primeiro é a sugestão.
+                const filtrados = freelancersDisponiveis
+                  .filter(f =>
+                    f.especialidade === modalSelecionarFreela.especialidade &&
+                    !jaNoEvento.has(f.id) &&
+                    f.nome.toLowerCase().includes(buscaFreela.toLowerCase()))
+                  .map(f => ({ ...f, nota: notaQualidade(f, historico) }))
+                  .sort((a, b) => b.nota - a.nota);
                 if (filtrados.length === 0) {
                   return (
                     <div className="text-center py-8">
@@ -731,11 +780,14 @@ export default function AgendaPage() {
                     </div>
                   );
                 }
-                return filtrados.map(freela => (
+                return filtrados.map((freela, i) => (
                   <div key={freela.id} className="flex items-center justify-between p-3 hover:bg-[#1a1a1a] rounded-lg transition-colors">
                     <div>
-                      <p className="text-sm font-medium text-gray-200">{freela.nome}</p>
-                      <p className="text-xs text-gray-500">{freela.telefone} · {freela.avaliacao} estrelas</p>
+                      <p className="text-sm font-medium text-gray-200 flex items-center gap-2">
+                        {freela.nome}
+                        {i === 0 && !buscaFreela && <span className="rounded-full bg-violet-500/15 px-2 py-0.5 text-[10px] text-violet-300">Sugerido</span>}
+                      </p>
+                      <p className="text-xs text-gray-500">Nota {freela.nota.toFixed(1)} · R$ {freela.diaria}</p>
                     </div>
                     <button onClick={() => handleAtribuirFreela(freela)}
                       className="bg-[#222] text-white hover:bg-violet-600 px-3 py-1.5 rounded text-xs font-medium transition-all duration-200 active:scale-95">

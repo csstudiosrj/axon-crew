@@ -12,7 +12,7 @@ import { maiuscula } from "@/lib/segmentos";
 import { CrewMark } from "@/components/marketing/CrewLogo";
 
 // Rotas abertas ao público: renderizadas sem a sidebar do sistema.
-const ROTAS_PUBLICAS = ["/login", "/criar-conta", "/cadastro", "/roteiro"];
+const ROTAS_PUBLICAS = ["/login", "/criar-conta", "/cadastro", "/roteiro", "/confirmar", "/p/"];
 
 const CREW = "#8b5cf6";
 
