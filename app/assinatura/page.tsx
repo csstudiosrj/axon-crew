@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Gem, Receipt, CheckCircle2, Clock, AlertTriangle, ArrowUpRight, LifeBuoy, MessageCircle, Copy } from "lucide-react";
+import { Gem, Receipt, CheckCircle2, Clock, AlertTriangle, ArrowUpRight, LifeBuoy, MessageCircle, Copy, CreditCard, Loader2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { chamarApi } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { PLANOS, getPlano, linkAssinar, WHATSAPP_ARXUM } from "@/lib/planos";
 import { dataBR, formatarBRL } from "@/lib/validacao";
@@ -31,7 +32,14 @@ interface Pagamento {
 
 const hojeISO = () => new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
 
-// Plano da empresa, faturas da ARXUM e pagamento por PIX.
+// Mensagem ao voltar do checkout do Mercado Pago (?pagamento=... na URL).
+const MENSAGEM_RETORNO: Record<string, string> = {
+  sucesso: "Pagamento recebido! Estamos confirmando com o Mercado Pago, leva só alguns instantes.",
+  pendente: "Pagamento em processamento. Quando o Mercado Pago confirmar, a fatura é baixada sozinha.",
+  falha: "O pagamento não foi concluído. Você pode tentar de novo.",
+};
+
+// Plano da empresa, faturas da ARXUM e pagamento online (Mercado Pago) ou por PIX.
 export default function AssinaturaPage() {
   const { company, ready, suspensa } = useAuth();
   const [faturas, setFaturas] = useState<Fatura[] | null>(null);
@@ -39,6 +47,8 @@ export default function AssinaturaPage() {
   const [hoje, setHoje] = useState("");
   const [diaVencimento, setDiaVencimento] = useState<number | null>(null);
   const [aviso, setAviso] = useState("");
+  const [pagando, setPagando] = useState<string | null>(null);
+  const retorno = useRef<string | null | undefined>(undefined);
 
   const carregar = useCallback(async () => {
     const [f, p, m] = await Promise.all([
@@ -55,7 +65,38 @@ export default function AssinaturaPage() {
 
   useEffect(() => { if (ready) Promise.resolve().then(carregar); }, [ready, carregar]);
 
+  // Voltando do checkout: mostra o resultado e, como o aviso do Mercado Pago
+  // pode chegar alguns segundos depois, confere as faturas de novo algumas vezes.
+  useEffect(() => {
+    if (!ready) return;
+    if (retorno.current === undefined) {
+      retorno.current = new URLSearchParams(window.location.search).get("pagamento");
+      window.history.replaceState(null, "", window.location.pathname);
+    }
+    const resultado = retorno.current;
+    if (!resultado || !MENSAGEM_RETORNO[resultado]) return;
+    Promise.resolve().then(() => {
+      setAviso(MENSAGEM_RETORNO[resultado]);
+      setTimeout(() => setAviso(""), 8000);
+    });
+    if (resultado === "falha") return;
+    let tentativas = 0;
+    const timer = setInterval(() => { carregar(); if (++tentativas >= 6) clearInterval(timer); }, 5000);
+    return () => clearInterval(timer);
+  }, [ready, carregar]);
+
   const avisar = (msg: string) => { setAviso(msg); setTimeout(() => setAviso(""), 3500); };
+
+  const pagarOnline = async (f: Fatura) => {
+    setPagando(f.id);
+    const r = await chamarApi<{ url: string }>("/api/pagamento/mercadopago", { fatura_id: f.id });
+    if (r.ok) {
+      window.location.assign(r.url);
+      return;
+    }
+    setPagando(null);
+    avisar(r.erro);
+  };
 
   const informar = async (f: Fatura) => {
     const { data } = await supabase.rpc("informar_pagamento", { p_fatura: f.id });
@@ -135,6 +176,13 @@ export default function AssinaturaPage() {
                     {dias > 0 ? <AlertTriangle size={14} /> : <Clock size={14} />}
                     {dias > 0 ? `Venceu em ${dataBR(f.vencimento)} (${dias} ${dias === 1 ? "dia" : "dias"} em atraso)` : dias === 0 ? "Vence hoje" : `Vence em ${dataBR(f.vencimento)}`}
                   </p>
+                  <div className="space-y-1.5">
+                    <button onClick={() => pagarOnline(f)} disabled={pagando === f.id}
+                      className="flex items-center gap-2 rounded-lg bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-violet-500 disabled:opacity-60">
+                      {pagando === f.id ? <Loader2 size={16} className="animate-spin" /> : <CreditCard size={16} />} Pagar online
+                    </button>
+                    <p className="text-xs text-gray-500">Pix ou cartão pelo Mercado Pago. A fatura é baixada sozinha quando o pagamento é confirmado.</p>
+                  </div>
                   {f.pagamento_informado_em ? (
                     <p className="text-sm text-sky-300 flex items-center gap-1.5"><CheckCircle2 size={14} /> Pagamento informado. Estamos conferindo e confirmamos por e-mail.</p>
                   ) : (

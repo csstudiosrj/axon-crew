@@ -11,5 +11,7 @@ export async function POST(req: Request) {
     resend: !!process.env.RESEND_API_KEY,
     remetente: process.env.EMAIL_REMETENTE ?? null,
     cron: !!process.env.CRON_SECRET,
+    mp_token: !!process.env.MP_ACCESS_TOKEN,
+    mp_webhook: !!process.env.MP_WEBHOOK_SECRET,
   });
 }
