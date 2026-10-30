@@ -20,7 +20,7 @@ interface Config {
   emails_automaticos: boolean;
 }
 
-interface Status { servico: boolean; resend: boolean; remetente: string | null; cron: boolean }
+interface Status { servico: boolean; resend: boolean; remetente: string | null; cron: boolean; mp_token: boolean; mp_webhook: boolean }
 
 const EXEMPLO: FaturaEmail = {
   numero: 1042, empresa: "Produtora Exemplo", descricao: "Mensalidade ARXUM Crew Profissional — 11/2026",
@@ -170,6 +170,8 @@ export default function AdminConfiguracoes() {
             <Situacao ok={status?.resend} nome="RESEND_API_KEY" detalhe="envio dos e-mails pela Resend" />
             <Situacao ok={status ? !!status.remetente : undefined} nome="EMAIL_REMETENTE" detalhe={status?.remetente ?? "ex.: ARXUM Crew <financeiro@arxum.com.br>"} />
             <Situacao ok={status?.cron} nome="CRON_SECRET" detalhe="protege a rotina diária das 9h" />
+            <Situacao ok={status?.mp_token} nome="MP_ACCESS_TOKEN" detalhe="pagamento online das faturas (Mercado Pago)" />
+            <Situacao ok={status?.mp_webhook} nome="MP_WEBHOOK_SECRET" detalhe="confere os avisos de pagamento do Mercado Pago" />
           </ul>
         </section>
 
