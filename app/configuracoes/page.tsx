@@ -165,7 +165,7 @@ export default function ConfiguracoesPage() {
       </div>
 
       <div className="space-y-6">
-        {companyId && <PlanoCard companyId={companyId} plano={company?.plano} empresa={nome} />}
+        {companyId && <PlanoCard companyId={companyId} plano={company?.plano} />}
 
         {/* DADOS DA EMPRESA */}
         <div className="bg-[#121212] border border-[#222] rounded-xl p-6">

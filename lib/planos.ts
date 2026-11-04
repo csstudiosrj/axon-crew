@@ -47,10 +47,5 @@ export const PLANOS: Plano[] = [
 
 export const getPlano = (id?: string | null): Plano => PLANOS.find((p) => p.id === id) ?? PLANOS[0];
 
-// Contato comercial da ARXUM para troca de plano.
+// WhatsApp comercial da ARXUM.
 export const WHATSAPP_ARXUM = "5521967119815";
-
-export const linkAssinar = (plano: Plano, empresa?: string) =>
-  `https://wa.me/${WHATSAPP_ARXUM}?text=${encodeURIComponent(
-    `Olá! Quero assinar o plano ${plano.nome} do ARXUM Crew${empresa ? ` para a empresa ${empresa}` : ""}.`
-  )}`;

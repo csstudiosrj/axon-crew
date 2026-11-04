@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import {
   Users, CalendarDays, DollarSign, ClipboardList,
-  Settings, LogOut, ChevronLeft, ChevronRight, BarChart3, Lock, CreditCard, LifeBuoy, Ban
+  Settings, LogOut, ChevronLeft, ChevronRight, BarChart3, Lock, CreditCard, LifeBuoy, Ban, Menu, X
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -39,6 +39,9 @@ function PainelInterno({ pathname, children }: { pathname: string; children: Rea
   const [isCollapsed, setIsCollapsed] = useState(false);
   const { termos, company, papel, suspensa, ready, signOut } = useAuth();
   const [naoLidas, setNaoLidas] = useState(0);
+  // No celular o menu fica escondido e abre por cima da tela.
+  const [menuAberto, setMenuAberto] = useState(false);
+  const recolhido = isCollapsed && !menuAberto;
 
   // Respostas da ARXUM no suporte ainda não lidas.
   useEffect(() => {
@@ -66,33 +69,38 @@ function PainelInterno({ pathname, children }: { pathname: string; children: Rea
   return (
     <div style={{ display: "flex", height: "100vh", width: "100%", overflow: "hidden", fontFamily: "var(--font-dm-sans), sans-serif" }}>
 
+      {menuAberto && (
+        <div onClick={() => setMenuAberto(false)} className="fixed inset-0 z-30 bg-black/60 md:hidden" aria-hidden="true" />
+      )}
+
       {/* SIDEBAR */}
-      <aside style={{
-        display: "flex", flexDirection: "column",
-        width: isCollapsed ? 80 : 256,
-        minWidth: isCollapsed ? 80 : 256,
+      <aside className={`${menuAberto ? "fixed inset-y-0 left-0 z-40 flex" : "hidden"} md:relative md:z-20 md:flex`} style={{
+        flexDirection: "column",
+        width: recolhido ? 80 : 256,
+        minWidth: recolhido ? 80 : 256,
         background: "#111820",
         borderRight: "1px solid rgba(216,228,240,0.08)",
         transition: "width 0.3s ease",
-        position: "relative",
-        zIndex: 20,
       }}>
-        <button onClick={() => setIsCollapsed(!isCollapsed)} aria-label={isCollapsed ? "Expandir menu" : "Recolher menu"} style={{
+        <button onClick={() => setIsCollapsed(!isCollapsed)} aria-label={isCollapsed ? "Expandir menu" : "Recolher menu"}
+          className="hidden items-center justify-center md:flex" style={{
           position: "absolute", right: -12, top: 24,
           background: "#182030", border: "1px solid #2a3444",
           borderRadius: "50%", width: 24, height: 24,
-          display: "flex", alignItems: "center", justifyContent: "center",
           cursor: "pointer", zIndex: 30, color: "#9aabbd",
         }}>
           {isCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
         </button>
 
-        <div style={{ padding: "1.5rem", display: "flex", alignItems: "center", gap: 10, justifyContent: isCollapsed ? "center" : "flex-start" }}>
+        <div style={{ padding: "1.5rem", display: "flex", alignItems: "center", gap: 10, justifyContent: recolhido ? "center" : "flex-start" }}>
           <CrewMark size={24} />
-          {!isCollapsed && (
+          {!recolhido && (
             <span className="font-logo" style={{ fontSize: "0.95rem", fontWeight: 800, letterSpacing: "-0.03em", whiteSpace: "nowrap" }}>
               <span style={{ color: CREW }}>ARXUM</span> <span style={{ color: "#fff" }}>Crew</span>
             </span>
+          )}
+          {menuAberto && (
+            <button onClick={() => setMenuAberto(false)} aria-label="Fechar menu" className="ml-auto text-arx-mist md:hidden"><X size={20} /></button>
           )}
         </div>
 
@@ -100,7 +108,7 @@ function PainelInterno({ pathname, children }: { pathname: string; children: Rea
           {menuItems.map((item) => {
             const isActive = pathname === item.path;
             return (
-              <Link key={item.path} href={item.path} title={isCollapsed ? item.name : ""} style={{
+              <Link key={item.path} href={item.path} onClick={() => setMenuAberto(false)} title={recolhido ? item.name : ""} style={{
                 display: "flex", alignItems: "center", gap: 12,
                 padding: "0.625rem 0.75rem", borderRadius: "0.5rem",
                 fontSize: "0.875rem", fontWeight: 500,
@@ -111,7 +119,7 @@ function PainelInterno({ pathname, children }: { pathname: string; children: Rea
                 transition: "all 0.15s",
               }}>
                 <item.icon size={20} style={{ minWidth: 20 }} />
-                {!isCollapsed && <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{item.name}</span>}
+                {!recolhido && <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{item.name}</span>}
                 {!!item.contador && (
                   <span style={{ background: "#7c3aed", color: "#fff", borderRadius: 999, fontSize: 11, fontWeight: 600, padding: "1px 7px" }}>{item.contador}</span>
                 )}
@@ -121,7 +129,7 @@ function PainelInterno({ pathname, children }: { pathname: string; children: Rea
         </nav>
 
         <div style={{ padding: "0.75rem", borderTop: "1px solid rgba(216,228,240,0.08)" }}>
-          <button onClick={signOut} title={isCollapsed ? "Sair" : ""} style={{
+          <button onClick={signOut} title={recolhido ? "Sair" : ""} style={{
             display: "flex", alignItems: "center", gap: 12,
             width: "100%", padding: "0.625rem 0.75rem",
             borderRadius: "0.5rem", fontSize: "0.875rem",
@@ -129,24 +137,30 @@ function PainelInterno({ pathname, children }: { pathname: string; children: Rea
             color: "#5e7a94", transition: "all 0.15s",
           }}>
             <LogOut size={20} style={{ minWidth: 20 }} />
-            {!isCollapsed && <span>Sair do Sistema</span>}
+            {!recolhido && <span>Sair do Sistema</span>}
           </button>
         </div>
       </aside>
 
       {/* CONTEÚDO */}
       <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0, overflow: "hidden" }}>
-        <header style={{
+        <header className="gap-3 px-4 md:px-8" style={{
           height: 64, minHeight: 64,
           background: "#0b0f14", borderBottom: "1px solid rgba(216,228,240,0.08)",
           display: "flex", alignItems: "center", justifyContent: "space-between",
-          padding: "0 2rem", zIndex: 10,
+          zIndex: 10,
         }}>
-          <p style={{ fontSize: "0.875rem", color: "#5e7a94", margin: 0 }}>
-            {menuItems.find((m) => m.path === pathname)?.name ?? ""}
-          </p>
+          <div className="flex min-w-0 items-center gap-3">
+            <button onClick={() => setMenuAberto(true)} aria-label="Abrir menu" className="relative text-arx-frost md:hidden">
+              <Menu size={22} />
+              {naoLidas > 0 && <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-arx-crew-strong" />}
+            </button>
+            <p className="truncate" style={{ fontSize: "0.875rem", color: "#5e7a94", margin: 0 }}>
+              {menuItems.find((m) => m.path === pathname)?.name ?? ""}
+            </p>
+          </div>
           {company?.name && (
-            <p style={{ fontSize: "0.875rem", color: "#9aabbd", margin: 0 }}>{company.name}</p>
+            <p className="truncate" style={{ fontSize: "0.875rem", color: "#9aabbd", margin: 0 }}>{company.name}</p>
           )}
         </header>
 

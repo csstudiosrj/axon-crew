@@ -2,11 +2,12 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Gem, Receipt, CheckCircle2, Clock, AlertTriangle, ArrowUpRight, LifeBuoy, CreditCard, Loader2, QrCode } from "lucide-react";
+import { Gem, Receipt, CheckCircle2, Clock, AlertTriangle, LifeBuoy, CreditCard, Loader2, QrCode, CalendarClock, Check } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { chamarApi } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
-import { PLANOS, getPlano, linkAssinar } from "@/lib/planos";
+import { PLANOS, getPlano, type PlanoId } from "@/lib/planos";
+import { invalidarEmpresa } from "@/lib/auth-context";
 import { dataBR, formatarBRL } from "@/lib/validacao";
 import PagarPix from "@/components/PagarPix";
 
@@ -19,6 +20,15 @@ interface Fatura {
   status: "pendente" | "paga" | "cancelada";
   pago_em: string | null;
   valor_pago: number | null;
+  plano_destino: PlanoId | null;
+}
+
+interface MinhaEmpresa {
+  plano: PlanoId;
+  dia_vencimento: number | null;
+  plano_proximo: PlanoId | null;
+  plano_proximo_em: string | null;
+  pago_ate: string | null;
 }
 
 const hojeISO = () => new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
@@ -36,7 +46,9 @@ export default function AssinaturaPage() {
   const { company, ready, suspensa } = useAuth();
   const [faturas, setFaturas] = useState<Fatura[] | null>(null);
   const [hoje, setHoje] = useState("");
-  const [diaVencimento, setDiaVencimento] = useState<number | null>(null);
+  const [empresa, setEmpresa] = useState<MinhaEmpresa | null>(null);
+  const [anual, setAnual] = useState(false);
+  const [trocando, setTrocando] = useState<PlanoId | null>(null);
   const [aviso, setAviso] = useState("");
   const [pagando, setPagando] = useState<string | null>(null);
   const [pix, setPix] = useState<string | null>(null);
@@ -44,11 +56,11 @@ export default function AssinaturaPage() {
 
   const carregar = useCallback(async () => {
     const [f, m] = await Promise.all([
-      supabase.from("faturas").select("id, numero, descricao, valor, vencimento, status, pago_em, valor_pago")
+      supabase.from("faturas").select("id, numero, descricao, valor, vencimento, status, pago_em, valor_pago, plano_destino")
         .neq("status", "cancelada").order("vencimento", { ascending: false }),
       supabase.rpc("minha_empresa"),
     ]);
-    setDiaVencimento(m.data?.dia_vencimento ?? null);
+    setEmpresa(m.data as MinhaEmpresa);
     setFaturas((f.data as Fatura[]) ?? []);
     setHoje(hojeISO());
   }, []);
@@ -77,6 +89,35 @@ export default function AssinaturaPage() {
 
   const avisar = (msg: string) => { setAviso(msg); setTimeout(() => setAviso(""), 3500); };
 
+  // Plano maior gera uma fatura de mudança (o QR Code abre na hora); plano
+  // menor fica agendado para o mês seguinte.
+  const trocarPlano = async (destino: PlanoId) => {
+    setTrocando(destino);
+    const { data, error } = await supabase.rpc("pedir_plano", { p_plano: destino, p_anual: anual });
+    setTrocando(null);
+    if (error || !data) { avisar("Não foi possível pedir a troca. Tente de novo."); return; }
+    if (data.tipo === "erro") { avisar(data.mensagem); return; }
+    await carregar();
+    if (data.tipo === "fatura") {
+      setPix(data.fatura_id);
+      avisar("Pague a fatura abaixo: o plano novo é liberado assim que o pagamento cair.");
+    } else if (data.a_partir) {
+      avisar(`Pronto. O plano ${getPlano(destino).nome} vale a partir de ${dataBR(data.a_partir)}.`);
+    }
+  };
+
+  const desistir = async () => {
+    await supabase.rpc("desistir_troca_plano");
+    setPix(null);
+    await carregar();
+    avisar("Pedido de troca de plano desfeito.");
+  };
+
+  const aoPagar = () => {
+    invalidarEmpresa();
+    setTimeout(carregar, 2500);
+  };
+
   const pagarOnline = async (f: Fatura) => {
     setPagando(f.id);
     const r = await chamarApi<{ url: string }>("/api/pagamento/mercadopago", { fatura_id: f.id });
@@ -92,10 +133,10 @@ export default function AssinaturaPage() {
     return <div className="p-8 flex items-center justify-center h-full"><p className="text-gray-500 animate-pulse">Carregando assinatura...</p></div>;
   }
 
-  const plano = getPlano(company?.plano);
+  const plano = getPlano(empresa?.plano ?? company?.plano);
   const abertas = faturas.filter((f) => f.status === "pendente").sort((a, b) => a.vencimento.localeCompare(b.vencimento));
   const historico = faturas.filter((f) => f.status === "paga");
-  const proximos = PLANOS.filter((p) => p.preco > plano.preco);
+  const anualAte = empresa?.pago_ate && empresa.pago_ate >= hoje ? empresa.pago_ate : null;
   const atraso = (f: Fatura) => Math.round((Date.parse(hoje) - Date.parse(f.vencimento)) / 86_400_000);
 
   return (
@@ -112,24 +153,73 @@ export default function AssinaturaPage() {
         </div>
       )}
 
-      <section className="bg-[#121212] border border-[#222] rounded-xl p-6">
+      <section className="bg-[#121212] border border-[#222] rounded-xl p-6 space-y-5">
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
             <h3 className="text-base font-semibold text-white flex items-center gap-2"><Gem size={18} className="text-violet-400" /> Plano {plano.nome}</h3>
-            <p className="text-sm text-gray-500 mt-1">{plano.preco === 0 ? "Gratuito" : `${formatarBRL(plano.preco)}/mês`} · {plano.descricao}</p>
+            <p className="text-sm text-gray-500 mt-1">
+              {plano.preco === 0 ? "Gratuito" : anualAte ? `Anual, pago até ${dataBR(anualAte)}` : `${formatarBRL(plano.preco)}/mês`} · {plano.descricao}
+            </p>
           </div>
-          {diaVencimento && plano.preco > 0 && (
-            <p className="text-sm text-gray-400">Vencimento todo dia <span className="text-white">{diaVencimento}</span></p>
+          {empresa?.dia_vencimento && plano.preco > 0 && !anualAte && (
+            <p className="text-sm text-gray-400">Vencimento todo dia <span className="text-white">{empresa.dia_vencimento}</span></p>
           )}
         </div>
-        {proximos.length > 0 && !suspensa && (
-          <div className="mt-5 flex flex-wrap gap-2">
-            {proximos.map((p) => (
-              <a key={p.id} href={linkAssinar(p, company?.name ?? "")} target="_blank" rel="noopener noreferrer"
-                className="flex items-center gap-1.5 rounded-lg border border-violet-500/30 bg-violet-500/10 px-3 py-2 text-xs font-medium text-violet-200 hover:bg-violet-500/20">
-                Mudar para {p.nome} · {formatarBRL(p.preco)}/mês <ArrowUpRight size={13} />
-              </a>
-            ))}
+
+        {empresa?.plano_proximo && empresa.plano_proximo_em && (
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+            <span className="flex items-center gap-2"><CalendarClock size={16} /> Seu plano muda para {getPlano(empresa.plano_proximo).nome} em {dataBR(empresa.plano_proximo_em)}.</span>
+            <button onClick={desistir} className="text-xs underline underline-offset-2 hover:text-white">Manter o plano atual</button>
+          </div>
+        )}
+
+        {!suspensa && !anualAte && (
+          <div>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-sm font-medium text-white">Trocar de plano</p>
+              <div className="flex rounded-lg border border-[#333] p-0.5 text-xs">
+                {[false, true].map((a) => (
+                  <button key={String(a)} onClick={() => setAnual(a)}
+                    className={`rounded-md px-3 py-1.5 ${anual === a ? "bg-violet-600 text-white" : "text-gray-400 hover:text-white"}`}>
+                    {a ? "Anual · 2 meses grátis" : "Mensal"}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {PLANOS.map((p) => {
+                const atual = p.id === plano.id && !anual;
+                const menor = p.preco < plano.preco && !anual;
+                const indisponivel = anual && p.preco === 0;
+                return (
+                  <div key={p.id} className={`flex flex-col rounded-xl border p-4 ${atual ? "border-violet-500/50 bg-violet-500/10" : "border-[#222] bg-[#0d0d0d]"}`}>
+                    <p className="text-sm font-semibold text-white">{p.nome}</p>
+                    <p className="mt-1 text-lg font-bold tabular-nums text-white">
+                      {p.preco === 0 ? "Grátis" : anual ? formatarBRL(p.preco * 10) : formatarBRL(p.preco)}
+                      {p.preco > 0 && <span className="text-xs font-normal text-gray-500">{anual ? "/ano" : "/mês"}</span>}
+                    </p>
+                    <ul className="mt-2 flex-1 space-y-1 text-xs text-gray-400">
+                      {p.itens.slice(0, 3).map((it) => <li key={it} className="flex gap-1.5"><Check size={12} className="mt-0.5 shrink-0 text-violet-400" /> {it}</li>)}
+                    </ul>
+                    {atual ? (
+                      <p className="mt-3 text-center text-xs font-medium text-violet-200">Seu plano</p>
+                    ) : indisponivel ? (
+                      <p className="mt-3 text-center text-xs text-gray-600">Sem opção anual</p>
+                    ) : (
+                      <button onClick={() => trocarPlano(p.id)} disabled={trocando !== null}
+                        className={`mt-3 flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold disabled:opacity-60 ${menor ? "border border-[#333] text-gray-300 hover:border-violet-500" : "bg-violet-600 text-white hover:bg-violet-500"}`}>
+                        {trocando === p.id && <Loader2 size={13} className="animate-spin" />}
+                        {menor ? "Mudar no próximo mês" : p.id === plano.id ? "Pagar anual" : "Mudar agora"}
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+            <p className="mt-3 text-xs text-gray-500">
+              Plano maior: vale assim que o pagamento é confirmado. Se o mês atual já foi pago, você paga só a diferença.
+              Plano menor: vale a partir do mês seguinte, sem multa.
+            </p>
           </div>
         )}
       </section>
@@ -164,12 +254,15 @@ export default function AssinaturaPage() {
                       className="flex items-center gap-2 rounded-lg border border-[#333] px-4 py-2.5 text-sm text-gray-200 hover:border-violet-500 hover:text-white disabled:opacity-60">
                       {pagando === f.id ? <Loader2 size={16} className="animate-spin" /> : <CreditCard size={16} />} Cartão
                     </button>
+                    {f.plano_destino && (
+                      <button onClick={desistir} className="px-2 text-sm text-gray-500 underline underline-offset-2 hover:text-white">Desistir da troca</button>
+                    )}
                   </div>
                   <p className="text-xs text-gray-500">O pagamento é confirmado sozinho, na hora. Não precisa mandar comprovante.</p>
                 </div>
                 {pix === f.id && (
                   <div className="md:w-[300px] md:border-l md:border-[#222] md:pl-6">
-                    <PagarPix faturaId={f.id} aoPagar={() => setTimeout(carregar, 2500)} />
+                    <PagarPix faturaId={f.id} aoPagar={aoPagar} />
                   </div>
                 )}
               </div>

@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { Gem, ArrowUpRight } from "lucide-react";
 import { supabase } from "../../lib/supabase";
-import { PLANOS, getPlano, linkAssinar } from "../../lib/planos";
+import Link from "next/link";
+import { PLANOS, getPlano } from "../../lib/planos";
 
 function Uso({ rotulo, usado, max }: { rotulo: string; usado: number; max: number | null }) {
   const pct = max ? Math.min(100, Math.round((usado / max) * 100)) : 0;
@@ -21,7 +22,7 @@ function Uso({ rotulo, usado, max }: { rotulo: string; usado: number; max: numbe
 }
 
 // Plano atual, uso dos limites e atalhos para mudar de plano.
-export default function PlanoCard({ companyId, plano, empresa }: { companyId: string; plano?: string | null; empresa: string }) {
+export default function PlanoCard({ companyId, plano }: { companyId: string; plano?: string | null }) {
   const atual = getPlano(plano);
   const [uso, setUso] = useState({ profissionais: 0, trabalhos: 0, usuarios: 1 });
 
@@ -54,10 +55,10 @@ export default function PlanoCard({ companyId, plano, empresa }: { companyId: st
       {proximos.length > 0 && (
         <div className="mt-5 flex flex-wrap gap-2">
           {proximos.map((p) => (
-            <a key={p.id} href={linkAssinar(p, empresa)} target="_blank" rel="noopener noreferrer"
+            <Link key={p.id} href="/assinatura"
               className="flex items-center gap-1.5 rounded-lg border border-violet-500/30 bg-violet-500/10 px-3 py-2 text-xs font-medium text-violet-200 hover:bg-violet-500/20">
               Mudar para {p.nome} · R$ {p.preco}/mês <ArrowUpRight size={13} />
-            </a>
+            </Link>
           ))}
         </div>
       )}
