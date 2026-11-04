@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Save, CheckCircle2, XCircle, Eye, Loader2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { chamarApi } from "@/lib/api";
-import { modelos, type FaturaEmail, type Pix } from "@/lib/emails/modelos";
+import { modelos, type FaturaEmail } from "@/lib/emails/modelos";
 import { card, campo, botaoPrimario, botaoSecundario, Modal, Rotulo, Carregando, usePainelAdmin } from "@/components/admin/ui";
 
 interface Config {
@@ -24,7 +24,7 @@ interface Status { servico: boolean; resend: boolean; remetente: string | null; 
 
 const EXEMPLO: FaturaEmail = {
   numero: 1042, empresa: "Produtora Exemplo", descricao: "Mensalidade ARXUM Crew Profissional — 11/2026",
-  valor: 149, vencimento: "2026-11-10", valor_pago: 149, pago_em: "2026-11-09",
+  valor: 149, vencimento: "2026-11-10", valor_pago: 149, pago_em: "2026-11-09", token: "exemplo",
 };
 
 function Situacao({ ok, nome, detalhe }: { ok: boolean | undefined; nome: string; detalhe: string }) {
@@ -75,41 +75,19 @@ export default function AdminConfiguracoes() {
     avisar(error ? "Não foi possível salvar. Confira os números (vencimento de 1 a 28, suspensão de 1 a 90 dias)." : "Configurações salvas.");
   };
 
-  const pix: Pix = { chave: cfg.pix_chave, nome: cfg.pix_nome, cidade: cfg.pix_cidade };
   const exemplos = [
-    { titulo: "Fatura disponível", quando: "assim que a fatura é gerada", email: () => modelos.fatura_nova(EXEMPLO, pix) },
-    { titulo: "Lembrete", quando: `${cfg.lembrete_dias_antes} dias antes do vencimento`, email: () => modelos.lembrete(EXEMPLO, pix, cfg.lembrete_dias_antes || 3) },
-    { titulo: "Vence hoje", quando: "no dia do vencimento", email: () => modelos.vence_hoje(EXEMPLO, pix) },
-    { titulo: "Fatura em aberto", quando: dias.length ? `${dias.join(", ")} dias depois do vencimento` : "desligado", email: () => modelos.atraso(EXEMPLO, pix, dias[0] ?? 1, suspender ? Number(suspender) : null) },
-    { titulo: "Acesso suspenso", quando: suspender ? `${suspender} dias depois do vencimento` : "desligado", email: () => modelos.suspensao(EXEMPLO, pix, Number(suspender) || 15) },
-    { titulo: "Pagamento recebido", quando: "quando você registra o pagamento", email: () => modelos.agradecimento(EXEMPLO) },
+    { titulo: "Fatura disponível", quando: "assim que a fatura é gerada", email: () => modelos.fatura_nova(EXEMPLO) },
+    { titulo: "Lembrete", quando: `${cfg.lembrete_dias_antes} dias antes do vencimento`, email: () => modelos.lembrete(EXEMPLO, cfg.lembrete_dias_antes || 3) },
+    { titulo: "Vence hoje", quando: "no dia do vencimento", email: () => modelos.vence_hoje(EXEMPLO) },
+    { titulo: "Fatura em aberto", quando: dias.length ? `${dias.join(", ")} dias depois do vencimento` : "desligado", email: () => modelos.atraso(EXEMPLO, dias[0] ?? 1, suspender ? Number(suspender) : null) },
+    { titulo: "Acesso suspenso", quando: suspender ? `${suspender} dias depois do vencimento` : "desligado", email: () => modelos.suspensao(EXEMPLO, Number(suspender) || 15) },
+    { titulo: "Pagamento recebido", quando: "assim que o pagamento é confirmado", email: () => modelos.agradecimento(EXEMPLO) },
     { titulo: "Resposta do suporte", quando: "quando você responde um chamado", email: () => modelos.suporte_resposta(EXEMPLO.empresa, 37, "Dúvida sobre o check-in", "Oi! O check-in fica liberado 2 horas antes do horário do trabalho.") },
   ];
 
   return (
     <div className="grid gap-6 lg:grid-cols-[1fr_380px]">
       <div className="space-y-6">
-        <section className={`${card} space-y-4 p-6`}>
-          <div>
-            <h2 className="text-[16px] font-semibold text-white">Recebimento por PIX</h2>
-            <p className="mt-1 text-[13px] text-arx-slate">Vai nas faturas, nos e-mails de cobrança e na área de assinatura das empresas, com QR Code e copia e cola.</p>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="sm:col-span-2">
-              <Rotulo htmlFor="pix-chave">Chave PIX da ARXUM</Rotulo>
-              <input id="pix-chave" value={cfg.pix_chave ?? ""} onChange={(e) => set("pix_chave", e.target.value)} className={campo} placeholder="CNPJ, e-mail, celular ou chave aleatória" />
-            </div>
-            <div>
-              <Rotulo htmlFor="pix-nome">Nome do recebedor</Rotulo>
-              <input id="pix-nome" value={cfg.pix_nome ?? ""} onChange={(e) => set("pix_nome", e.target.value)} className={campo} placeholder="Como aparece no banco" maxLength={25} />
-            </div>
-            <div>
-              <Rotulo htmlFor="pix-cidade">Cidade</Rotulo>
-              <input id="pix-cidade" value={cfg.pix_cidade ?? ""} onChange={(e) => set("pix_cidade", e.target.value)} className={campo} maxLength={15} />
-            </div>
-          </div>
-        </section>
-
         <section className={`${card} space-y-4 p-6`}>
           <div>
             <h2 className="text-[16px] font-semibold text-white">Contato</h2>

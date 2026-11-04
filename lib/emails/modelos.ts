@@ -2,7 +2,6 @@
 // Mesmo visual dos e-mails de cadastro (supabase/emails/gerar.js): tabelas,
 // estilos inline, fontes do sistema e logotipo em PNG.
 import { formatarBRL, dataBR } from "../validacao";
-import { pixCopiaECola } from "../pix";
 
 export const SITE = "https://www.arxum.com.br/crew";
 const LOGO = `${SITE}/email/logo-crew.png`;
@@ -74,12 +73,8 @@ export interface FaturaEmail {
   vencimento: string;
   valor_pago?: number | null;
   pago_em?: string | null;
-}
-
-export interface Pix {
-  chave: string | null;
-  nome: string | null;
-  cidade: string | null;
+  // Link público de pagamento (/pagar/<token>).
+  token?: string | null;
 }
 
 export interface Email {
@@ -91,16 +86,16 @@ const RODAPE_COBRANCA =
   "Você recebe este e-mail por ser o contato financeiro da empresa no ARXUM Crew. Se já pagou, desconsidere esta mensagem.";
 const LINK_ASSINATURA = `${SITE}/assinatura`;
 
-// Quadro com os dados da fatura e o PIX copia e cola.
-function quadroFatura(f: FaturaEmail, pix: Pix | null, destaque?: string) {
+// Link para pagar a fatura por PIX (confirmação automática), sem entrar no painel.
+const linkPagar = (f: FaturaEmail) => (f.token ? `${SITE}/pagar/${f.token}` : LINK_ASSINATURA);
+
+// Quadro com os dados da fatura.
+function quadroFatura(f: FaturaEmail, destaque?: string) {
   const linha = (rotulo: string, valor: string) => `
     <tr>
       <td style="padding:8px 0;font-family:${FONTE};font-size:14px;color:#6b7684">${rotulo}</td>
       <td align="right" style="padding:8px 0;font-family:${FONTE};font-size:14px;color:#07090c;font-weight:600">${valor}</td>
     </tr>`;
-  const copiaECola = pix?.chave && pix.nome
-    ? pixCopiaECola({ chave: pix.chave, nome: pix.nome, cidade: pix.cidade ?? "RIO DE JANEIRO", valor: f.valor, identificador: `CREW${f.numero}` })
-    : null;
   return `
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:8px 0 20px;border:1px solid #e6e8eb;border-radius:10px">
   <tr><td style="padding:16px 18px">
@@ -111,32 +106,28 @@ function quadroFatura(f: FaturaEmail, pix: Pix | null, destaque?: string) {
       ${linha("Valor", formatarBRL(f.valor))}
     </table>
   </td></tr>
-  ${copiaECola ? `
-  <tr><td style="padding:16px 18px;border-top:1px solid #e6e8eb;background:#fafafb;border-radius:0 0 10px 10px">
-    <p style="margin:0 0 8px;font-family:${FONTE};font-size:13px;font-weight:600;color:#07090c">PIX copia e cola</p>
-    <p style="margin:0;font-family:Menlo, Consolas, monospace;font-size:12px;line-height:1.5;color:#3c4652;word-break:break-all">${copiaECola}</p>
-    <p style="margin:10px 0 0;font-family:${FONTE};font-size:12px;color:#6b7684">No app do banco, escolha PIX → Copia e cola e cole o código acima. Chave: ${escapar(pix!.chave!)}</p>
-  </td></tr>` : ""}
 </table>`;
 }
 
+const COMO_PAGAR = p("Pague por PIX ou cartão pelo botão abaixo. A confirmação é automática: não precisa mandar comprovante.");
+
 export const modelos = {
-  fatura_nova(f: FaturaEmail, pix: Pix | null): Email {
+  fatura_nova(f: FaturaEmail): Email {
     return {
       assunto: `Sua fatura do ARXUM Crew vence em ${dataBR(f.vencimento)}`,
       html: layout({
         previa: `Fatura nº ${f.numero} de ${formatarBRL(f.valor)} disponível para pagamento.`,
         titulo: "Sua fatura está disponível",
         corpo: p(`Olá, ${forte(escapar(f.empresa))}! A fatura do seu plano no ARXUM Crew já está disponível.`) +
-          quadroFatura(f, pix) +
-          p("Você pode pagar pelo PIX acima ou pela área de assinatura do painel, onde também fica o QR Code.") +
-          botao("Ver fatura e pagar", LINK_ASSINATURA),
+          quadroFatura(f) +
+          COMO_PAGAR +
+          botao("Pagar agora", linkPagar(f)),
         rodape: RODAPE_COBRANCA,
       }),
     };
   },
 
-  lembrete(f: FaturaEmail, pix: Pix | null, dias: number): Email {
+  lembrete(f: FaturaEmail, dias: number): Email {
     const quando = dias === 1 ? "amanhã" : `em ${dias} dias`;
     return {
       assunto: `Lembrete: sua fatura do ARXUM Crew vence ${quando}`,
@@ -144,29 +135,29 @@ export const modelos = {
         previa: `Fatura nº ${f.numero} de ${formatarBRL(f.valor)} vence ${quando}.`,
         titulo: `Sua fatura vence ${quando}`,
         corpo: p(`Olá, ${forte(escapar(f.empresa))}! Passando para lembrar que a fatura do ARXUM Crew vence ${forte(dataBR(f.vencimento))}.`) +
-          quadroFatura(f, pix) +
+          quadroFatura(f) +
           p("Se já fez o pagamento, é só desconsiderar este aviso.") +
-          botao("Ver fatura e pagar", LINK_ASSINATURA),
+          botao("Pagar agora", linkPagar(f)),
         rodape: RODAPE_COBRANCA,
       }),
     };
   },
 
-  vence_hoje(f: FaturaEmail, pix: Pix | null): Email {
+  vence_hoje(f: FaturaEmail): Email {
     return {
       assunto: "Sua fatura do ARXUM Crew vence hoje",
       html: layout({
         previa: `Fatura nº ${f.numero} de ${formatarBRL(f.valor)} vence hoje.`,
         titulo: "Sua fatura vence hoje",
-        corpo: p(`Olá, ${forte(escapar(f.empresa))}! A fatura do ARXUM Crew vence ${forte("hoje")}. Pague pelo PIX abaixo para manter o acesso em dia.`) +
-          quadroFatura(f, pix) +
-          botao("Ver fatura e pagar", LINK_ASSINATURA),
+        corpo: p(`Olá, ${forte(escapar(f.empresa))}! A fatura do ARXUM Crew vence ${forte("hoje")}. Pague pelo botão abaixo para manter o acesso em dia.`) +
+          quadroFatura(f) +
+          botao("Pagar agora", linkPagar(f)),
         rodape: RODAPE_COBRANCA,
       }),
     };
   },
 
-  atraso(f: FaturaEmail, pix: Pix | null, dias: number, suspenderEm: number | null): Email {
+  atraso(f: FaturaEmail, dias: number, suspenderEm: number | null): Email {
     const aviso = suspenderEm && suspenderEm > dias
       ? p(`Para evitar a suspensão do acesso, regularize em até ${forte(`${suspenderEm - dias} ${suspenderEm - dias === 1 ? "dia" : "dias"}`)}.`)
       : "";
@@ -176,17 +167,17 @@ export const modelos = {
         previa: `Não identificamos o pagamento da fatura nº ${f.numero}.`,
         titulo: "Fatura em aberto",
         corpo: p(`Olá, ${forte(escapar(f.empresa))}. Ainda não identificamos o pagamento da fatura abaixo, vencida em ${forte(dataBR(f.vencimento))}.`) +
-          quadroFatura(f, pix, `${dias} ${dias === 1 ? "dia" : "dias"} em atraso`) +
+          quadroFatura(f, `${dias} ${dias === 1 ? "dia" : "dias"} em atraso`) +
           aviso +
-          p("Se já pagou, responda este e-mail com o comprovante ou clique em “Já paguei” na área de assinatura, que a gente confere.") +
-          botao("Regularizar agora", LINK_ASSINATURA),
+          COMO_PAGAR +
+          botao("Regularizar agora", linkPagar(f)),
         rodape: RODAPE_COBRANCA,
       }),
     };
   },
 
   // Cobrança enviada pelo painel, com mensagem opcional.
-  cobranca(f: FaturaEmail, pix: Pix | null, diasAtraso: number, mensagem?: string): Email {
+  cobranca(f: FaturaEmail, diasAtraso: number, mensagem?: string): Email {
     const situacao = diasAtraso > 0 ? `${diasAtraso} ${diasAtraso === 1 ? "dia" : "dias"} em atraso` : undefined;
     return {
       assunto: diasAtraso > 0 ? `Pagamento pendente: fatura nº ${f.numero} do ARXUM Crew` : `Fatura nº ${f.numero} do ARXUM Crew`,
@@ -197,8 +188,8 @@ export const modelos = {
           (mensagem?.trim() ? texto(mensagem) : p(diasAtraso > 0
             ? "Segue a fatura em aberto do seu plano no ARXUM Crew. Qualquer dúvida, é só responder este e-mail."
             : "Segue a fatura do seu plano no ARXUM Crew. Qualquer dúvida, é só responder este e-mail.")) +
-          quadroFatura(f, pix, situacao) +
-          botao("Ver fatura e pagar", LINK_ASSINATURA),
+          quadroFatura(f, situacao) +
+          botao("Pagar agora", linkPagar(f)),
         rodape: RODAPE_COBRANCA,
       }),
     };
@@ -218,7 +209,7 @@ export const modelos = {
     };
   },
 
-  suspensao(f: FaturaEmail, pix: Pix | null, dias: number): Email {
+  suspensao(f: FaturaEmail, dias: number): Email {
     return {
       assunto: "Acesso ao ARXUM Crew suspenso por falta de pagamento",
       html: layout({
@@ -226,9 +217,9 @@ export const modelos = {
         titulo: "Acesso suspenso",
         corpo: p(`Olá, ${forte(escapar(f.empresa))}. Como a fatura abaixo está em aberto há ${dias} dias, o acesso da sua empresa ao ARXUM Crew foi suspenso.`) +
           p("Seus dados continuam guardados. Assim que o pagamento for confirmado, o acesso volta a funcionar normalmente.") +
-          quadroFatura(f, pix, `${dias} dias em atraso`) +
-          p("Depois de pagar, entre no painel e clique em “Já paguei”, ou responda este e-mail com o comprovante.") +
-          botao("Regularizar agora", LINK_ASSINATURA),
+          quadroFatura(f, `${dias} dias em atraso`) +
+          p("Pague pelo botão abaixo: o acesso é liberado sozinho, na hora em que o pagamento é confirmado.") +
+          botao("Regularizar agora", linkPagar(f)),
         rodape: RODAPE_COBRANCA,
       }),
     };

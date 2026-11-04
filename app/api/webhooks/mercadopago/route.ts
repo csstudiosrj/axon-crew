@@ -8,6 +8,7 @@
 // algo falhou do nosso lado, para o Mercado Pago tentar de novo.
 import { supabaseServico } from "@/lib/servidor/servicos";
 import { assinaturaValida, buscarPagamento } from "@/lib/servidor/mercadopago";
+import { registrarPagamento } from "@/lib/servidor/pagamento-fatura";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
@@ -31,16 +32,7 @@ export async function POST(req: Request) {
     const faturaId = pagamento.external_reference;
     if (!faturaId || !UUID.test(faturaId)) return Response.json({ ok: true, ignorado: "sem_fatura" });
 
-    const { data, error } = await supabaseServico().rpc("servico_registrar_pagamento_mp", {
-      p_fatura: faturaId,
-      p_payment_id: String(pagamento.id),
-      p_status: pagamento.status,
-      p_status_detail: pagamento.status_detail,
-      p_valor: pagamento.transaction_amount,
-      p_forma: pagamento.payment_type_id,
-      p_aprovado_em: pagamento.date_approved,
-    });
-    if (error) throw new Error(error.message);
+    const data = await registrarPagamento(supabaseServico(), faturaId, pagamento);
     return Response.json({ ok: true, resultado: data });
   } catch (e) {
     console.error("mercadopago: webhook", e instanceof Error ? e.message : e);

@@ -2,13 +2,13 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Gem, Receipt, CheckCircle2, Clock, AlertTriangle, ArrowUpRight, LifeBuoy, MessageCircle, Copy, CreditCard, Loader2 } from "lucide-react";
+import { Gem, Receipt, CheckCircle2, Clock, AlertTriangle, ArrowUpRight, LifeBuoy, CreditCard, Loader2, QrCode } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { chamarApi } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
-import { PLANOS, getPlano, linkAssinar, WHATSAPP_ARXUM } from "@/lib/planos";
+import { PLANOS, getPlano, linkAssinar } from "@/lib/planos";
 import { dataBR, formatarBRL } from "@/lib/validacao";
-import PixPagamento from "@/components/painel/PixPagamento";
+import PagarPix from "@/components/PagarPix";
 
 interface Fatura {
   id: string;
@@ -19,15 +19,6 @@ interface Fatura {
   status: "pendente" | "paga" | "cancelada";
   pago_em: string | null;
   valor_pago: number | null;
-  pagamento_informado_em: string | null;
-}
-
-interface Pagamento {
-  pix_chave: string | null;
-  pix_nome: string | null;
-  pix_cidade: string | null;
-  whatsapp: string | null;
-  email_suporte: string | null;
 }
 
 const hojeISO = () => new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
@@ -39,27 +30,26 @@ const MENSAGEM_RETORNO: Record<string, string> = {
   falha: "O pagamento não foi concluído. Você pode tentar de novo.",
 };
 
-// Plano da empresa, faturas da ARXUM e pagamento online (Mercado Pago) ou por PIX.
+// Plano da empresa e faturas da ARXUM, pagas por PIX ou cartão (Mercado Pago)
+// com baixa automática.
 export default function AssinaturaPage() {
   const { company, ready, suspensa } = useAuth();
   const [faturas, setFaturas] = useState<Fatura[] | null>(null);
-  const [pagamento, setPagamento] = useState<Pagamento | null>(null);
   const [hoje, setHoje] = useState("");
   const [diaVencimento, setDiaVencimento] = useState<number | null>(null);
   const [aviso, setAviso] = useState("");
   const [pagando, setPagando] = useState<string | null>(null);
+  const [pix, setPix] = useState<string | null>(null);
   const retorno = useRef<string | null | undefined>(undefined);
 
   const carregar = useCallback(async () => {
-    const [f, p, m] = await Promise.all([
-      supabase.from("faturas").select("id, numero, descricao, valor, vencimento, status, pago_em, valor_pago, pagamento_informado_em")
+    const [f, m] = await Promise.all([
+      supabase.from("faturas").select("id, numero, descricao, valor, vencimento, status, pago_em, valor_pago")
         .neq("status", "cancelada").order("vencimento", { ascending: false }),
-      supabase.rpc("dados_pagamento"),
       supabase.rpc("minha_empresa"),
     ]);
     setDiaVencimento(m.data?.dia_vencimento ?? null);
     setFaturas((f.data as Fatura[]) ?? []);
-    setPagamento(p.data as Pagamento);
     setHoje(hojeISO());
   }, []);
 
@@ -98,16 +88,6 @@ export default function AssinaturaPage() {
     avisar(r.erro);
   };
 
-  const informar = async (f: Fatura) => {
-    const { data } = await supabase.rpc("informar_pagamento", { p_fatura: f.id });
-    if (data === "ok") {
-      avisar("Obrigado! Vamos conferir o pagamento e confirmar por e-mail.");
-      carregar();
-    } else {
-      avisar("Não foi possível registrar. Tente de novo.");
-    }
-  };
-
   if (!ready || !faturas) {
     return <div className="p-8 flex items-center justify-center h-full"><p className="text-gray-500 animate-pulse">Carregando assinatura...</p></div>;
   }
@@ -116,7 +96,6 @@ export default function AssinaturaPage() {
   const abertas = faturas.filter((f) => f.status === "pendente").sort((a, b) => a.vencimento.localeCompare(b.vencimento));
   const historico = faturas.filter((f) => f.status === "paga");
   const proximos = PLANOS.filter((p) => p.preco > plano.preco);
-  const whatsapp = (pagamento?.whatsapp ?? "").replace(/\D/g, "") || WHATSAPP_ARXUM;
   const atraso = (f: Fatura) => Math.round((Date.parse(hoje) - Date.parse(f.vencimento)) / 86_400_000);
 
   return (
@@ -176,36 +155,22 @@ export default function AssinaturaPage() {
                     {dias > 0 ? <AlertTriangle size={14} /> : <Clock size={14} />}
                     {dias > 0 ? `Venceu em ${dataBR(f.vencimento)} (${dias} ${dias === 1 ? "dia" : "dias"} em atraso)` : dias === 0 ? "Vence hoje" : `Vence em ${dataBR(f.vencimento)}`}
                   </p>
-                  <div className="space-y-1.5">
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    <button onClick={() => setPix(pix === f.id ? null : f.id)}
+                      className="flex items-center gap-2 rounded-lg bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-violet-500">
+                      <QrCode size={16} /> Pagar com PIX
+                    </button>
                     <button onClick={() => pagarOnline(f)} disabled={pagando === f.id}
-                      className="flex items-center gap-2 rounded-lg bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-violet-500 disabled:opacity-60">
-                      {pagando === f.id ? <Loader2 size={16} className="animate-spin" /> : <CreditCard size={16} />} Pagar online
+                      className="flex items-center gap-2 rounded-lg border border-[#333] px-4 py-2.5 text-sm text-gray-200 hover:border-violet-500 hover:text-white disabled:opacity-60">
+                      {pagando === f.id ? <Loader2 size={16} className="animate-spin" /> : <CreditCard size={16} />} Cartão
                     </button>
-                    <p className="text-xs text-gray-500">Pix ou cartão pelo Mercado Pago. A fatura é baixada sozinha quando o pagamento é confirmado.</p>
                   </div>
-                  {f.pagamento_informado_em ? (
-                    <p className="text-sm text-sky-300 flex items-center gap-1.5"><CheckCircle2 size={14} /> Pagamento informado. Estamos conferindo e confirmamos por e-mail.</p>
-                  ) : (
-                    <button onClick={() => informar(f)}
-                      className="rounded-lg border border-[#333] px-4 py-2 text-sm text-gray-200 hover:border-violet-500 hover:text-white">
-                      Já paguei
-                    </button>
-                  )}
-                  {pagamento?.pix_chave && (
-                    <p className="text-xs text-gray-500 flex items-center gap-1.5">
-                      Chave PIX: <span className="text-gray-300">{pagamento.pix_chave}</span>
-                      <button onClick={() => { navigator.clipboard.writeText(pagamento.pix_chave ?? ""); avisar("Chave copiada."); }} aria-label="Copiar chave" className="hover:text-white"><Copy size={12} /></button>
-                    </p>
-                  )}
+                  <p className="text-xs text-gray-500">O pagamento é confirmado sozinho, na hora. Não precisa mandar comprovante.</p>
                 </div>
-                {pagamento?.pix_chave && pagamento.pix_nome ? (
-                  <PixPagamento chave={pagamento.pix_chave} nome={pagamento.pix_nome} cidade={pagamento.pix_cidade ?? undefined}
-                    valor={Number(f.valor)} identificador={`CREW${f.numero}`} aoCopiar={() => avisar("Código PIX copiado.")} />
-                ) : (
-                  <a href={`https://wa.me/${whatsapp}?text=${encodeURIComponent(`Olá! Quero pagar a fatura nº ${f.numero} do ARXUM Crew.`)}`} target="_blank" rel="noopener noreferrer"
-                    className="self-center flex items-center gap-2 rounded-lg bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-violet-500">
-                    <MessageCircle size={16} /> Pedir dados de pagamento
-                  </a>
+                {pix === f.id && (
+                  <div className="md:w-[300px] md:border-l md:border-[#222] md:pl-6">
+                    <PagarPix faturaId={f.id} aoPagar={() => setTimeout(carregar, 2500)} />
+                  </div>
                 )}
               </div>
             </div>

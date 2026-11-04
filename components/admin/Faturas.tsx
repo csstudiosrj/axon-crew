@@ -2,10 +2,11 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Send, CheckCircle2, XCircle, RotateCcw, Heart, BellRing, Mail } from "lucide-react";
+import { Send, CheckCircle2, XCircle, RotateCcw, Heart, Mail, QrCode } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { chamarApi } from "@/lib/api";
 import { dataBR, formatarBRL } from "@/lib/validacao";
+import PagarPix from "@/components/PagarPix";
 import { Modal, BotoesModal, Rotulo, Vazio, campo, card, dataHora, usePainelAdmin } from "./ui";
 
 export interface Fatura {
@@ -23,7 +24,6 @@ export interface Fatura {
   pago_em: string | null;
   valor_pago: number | null;
   forma_pagamento: string | null;
-  pagamento_informado_em: string | null;
   observacao: string | null;
   criado_em: string;
   dias_atraso: number;
@@ -54,13 +54,13 @@ export function SituacaoFatura({ f }: { f: Fatura }) {
       {f.dias_atraso > 0
         ? <span className="rounded-full bg-red-500/15 px-2 py-0.5 text-[11px] font-semibold text-red-300">Vencida há {f.dias_atraso} {f.dias_atraso === 1 ? "dia" : "dias"}</span>
         : <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-[11px] font-semibold text-amber-300">Em aberto</span>}
-      {f.pagamento_informado_em && <span className="rounded-full bg-sky-500/15 px-2 py-0.5 text-[11px] font-semibold text-sky-300" title={`Informado em ${dataHora(f.pagamento_informado_em)}`}>Informou pagamento</span>}
     </span>
   );
 }
 
 type Acao =
   | { tipo: "cobrar"; f: Fatura }
+  | { tipo: "pix"; f: Fatura }
   | { tipo: "baixar"; f: Fatura }
   | { tipo: "cancelar"; f: Fatura }
   | { tipo: "reabrir"; f: Fatura }
@@ -175,8 +175,9 @@ export function TabelaFaturas({ faturas, aoMudar, mostrarEmpresa = true }: {
                 <td className="px-5 py-3.5">
                   <div className="flex items-center justify-end gap-1">
                     {f.status === "pendente" && <>
+                      <button onClick={() => abrir({ tipo: "pix", f })} title="QR Code PIX (para testar ou mandar para a empresa)" className={icone}><QrCode size={16} /></button>
                       <button onClick={() => abrir({ tipo: "cobrar", f })} title="Enviar cobrança por e-mail" className={icone}><Send size={16} /></button>
-                      <button onClick={() => abrir({ tipo: "baixar", f })} title="Registrar pagamento" className="rounded-md p-2 text-emerald-400 hover:bg-white/5"><CheckCircle2 size={16} /></button>
+                      <button onClick={() => abrir({ tipo: "baixar", f })} title="Registrar pagamento recebido fora do sistema" className="rounded-md p-2 text-emerald-400 hover:bg-white/5"><CheckCircle2 size={16} /></button>
                       <button onClick={() => abrir({ tipo: "cancelar", f })} title="Cancelar fatura" className={`${icone} hover:text-red-300`}><XCircle size={16} /></button>
                     </>}
                     {f.status === "paga" && <>
@@ -191,6 +192,15 @@ export function TabelaFaturas({ faturas, aoMudar, mostrarEmpresa = true }: {
           </tbody>
         </table>
       </div>
+
+      {acao?.tipo === "pix" && (
+        <Modal titulo={`PIX da fatura nº ${acao.f.numero}`} aoFechar={() => { setAcao(null); aoMudar(); }}>
+          <p className="mb-4 text-[13px] text-arx-mist">
+            {acao.f.empresa} · {acao.f.descricao}. É o mesmo PIX que a empresa vê na Assinatura: pago, a fatura é baixada sozinha e o agradecimento sai por e-mail.
+          </p>
+          <PagarPix faturaId={acao.f.id} aoPagar={() => { aoMudar(); atualizarContadores(); }} />
+        </Modal>
+      )}
 
       {acao?.tipo === "cobrar" && (
         <Modal titulo={`Cobrar fatura nº ${acao.f.numero}`} aoFechar={() => setAcao(null)}>
@@ -216,11 +226,6 @@ export function TabelaFaturas({ faturas, aoMudar, mostrarEmpresa = true }: {
 
       {acao?.tipo === "baixar" && (
         <Modal titulo={`Registrar pagamento · nº ${acao.f.numero}`} aoFechar={() => setAcao(null)}>
-          {acao.f.pagamento_informado_em && (
-            <p className="mb-4 flex items-center gap-2 rounded-lg border border-sky-500/25 bg-sky-500/10 px-3 py-2 text-[13px] text-sky-200">
-              <BellRing size={14} /> A empresa informou o pagamento em {dataHora(acao.f.pagamento_informado_em)}. Confira no extrato antes de confirmar.
-            </p>
-          )}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Rotulo htmlFor="baixa-data">Data do pagamento</Rotulo>
