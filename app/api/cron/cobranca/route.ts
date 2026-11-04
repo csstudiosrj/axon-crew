@@ -3,8 +3,10 @@
 // 2. envia os avisos da régua (fatura nova, lembrete, vence hoje, atraso, agradecimento);
 // 3. suspende quem passou do prazo, se isso estiver ligado nas configurações.
 import { supabaseServico, enviarEmail, configPlataforma } from "@/lib/servidor/servicos";
-import { modelos, type FaturaEmail, type Pix } from "@/lib/emails/modelos";
+import { modelos, type FaturaEmail } from "@/lib/emails/modelos";
 import { proximoAviso, type FaturaRegua } from "@/lib/cobranca";
+import { conferirFatura, CAMPOS_PIX, type FaturaPix } from "@/lib/servidor/pagamento-fatura";
+import { mercadoPagoConfigurado } from "@/lib/servidor/mercadopago";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -20,6 +22,7 @@ interface FaturaServico extends FaturaRegua {
   vencimento: string;
   pago_em: string | null;
   valor_pago: number | null;
+  token: string;
 }
 
 export async function GET(req: Request) {
@@ -35,13 +38,24 @@ export async function GET(req: Request) {
   const { data: geradas, error: erroGerar } = await db.rpc("gerar_mensalidades", { p_competencia: hoje });
   if (erroGerar) return Response.json({ erro: erroGerar.message }, { status: 500 });
 
-  const resultado = { geradas: geradas as number, enviados: 0, erros: 0, suspensas: 0 };
+  const resultado = { geradas: geradas as number, enviados: 0, erros: 0, suspensas: 0, conferidas: 0 };
+
+  // Rede de segurança: PIX pago cujo aviso do Mercado Pago não chegou.
+  if (mercadoPagoConfigurado()) {
+    const { data: comPix } = await db.from("faturas").select(CAMPOS_PIX).eq("status", "pendente").not("mp_pix_payment_id", "is", null);
+    for (const f of comPix ?? []) {
+      try {
+        if ((await conferirFatura(db, f as unknown as FaturaPix)) === "paga") resultado.conferidas++;
+      } catch (e) {
+        console.error("cron: conferir pix", e instanceof Error ? e.message : e);
+      }
+    }
+  }
   if (!cfg.emails_automaticos) return Response.json({ ...resultado, emails: "desligados" });
 
   const { data: faturas, error } = await db.rpc("servico_faturas");
   if (error) return Response.json({ erro: error.message }, { status: 500 });
 
-  const pix: Pix = { chave: cfg.pix_chave, nome: cfg.pix_nome, cidade: cfg.pix_cidade };
 
   for (const f of (faturas ?? []) as FaturaServico[]) {
     const aviso = proximoAviso(f, cfg);
@@ -49,21 +63,21 @@ export async function GET(req: Request) {
 
     const dados: FaturaEmail = {
       numero: f.numero, empresa: f.empresa, descricao: f.descricao, valor: Number(f.valor),
-      vencimento: f.vencimento, valor_pago: f.valor_pago != null ? Number(f.valor_pago) : null, pago_em: f.pago_em,
+      vencimento: f.vencimento, valor_pago: f.valor_pago != null ? Number(f.valor_pago) : null, pago_em: f.pago_em, token: f.token,
     };
     let email;
     switch (aviso.tipo) {
       case "agradecimento": email = modelos.agradecimento(dados); break;
-      case "fatura_nova":   email = modelos.fatura_nova(dados, pix); break;
-      case "lembrete":      email = modelos.lembrete(dados, pix, aviso.dias); break;
-      case "vence_hoje":    email = modelos.vence_hoje(dados, pix); break;
+      case "fatura_nova":   email = modelos.fatura_nova(dados); break;
+      case "lembrete":      email = modelos.lembrete(dados, aviso.dias); break;
+      case "vence_hoje":    email = modelos.vence_hoje(dados); break;
       case "suspensao":
         await db.from("companies").update({ suspensa: true, suspensa_em: new Date().toISOString() }).eq("id", f.company_id);
         resultado.suspensas++;
-        email = modelos.suspensao(dados, pix, aviso.dias);
+        email = modelos.suspensao(dados, aviso.dias);
         break;
       default:
-        email = modelos.atraso(dados, pix, aviso.dias, cfg.suspender_apos_dias);
+        email = modelos.atraso(dados, aviso.dias, cfg.suspender_apos_dias);
     }
 
     const envio = await enviarEmail(db, {

@@ -21,7 +21,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const atualizarContadores = useCallback(() => {
     supabase.rpc("admin_resumo").then(({ data }) => {
       if (!data) return;
-      setContadores({ chamados: data.chamados_abertos, cobranca: data.faturas_vencidas + data.pagamentos_informados });
+      setContadores({ chamados: data.chamados_abertos, cobranca: data.faturas_vencidas });
     });
   }, []);
 

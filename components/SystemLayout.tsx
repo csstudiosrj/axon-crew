@@ -15,7 +15,7 @@ import { supabase } from "@/lib/supabase";
 
 // Rotas abertas ao público: renderizadas sem a sidebar do sistema.
 // /documento usa login, mas é renderizado sem a sidebar para imprimir.
-const ROTAS_PUBLICAS = ["/login", "/criar-conta", "/recuperar-senha", "/redefinir-senha", "/cadastro", "/roteiro", "/confirmar", "/p/", "/documento", "/admin"];
+const ROTAS_PUBLICAS = ["/login", "/criar-conta", "/recuperar-senha", "/redefinir-senha", "/cadastro", "/roteiro", "/confirmar", "/p/", "/pagar/", "/documento", "/admin"];
 
 const CREW = "#8b5cf6";
 

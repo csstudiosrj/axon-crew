@@ -1,6 +1,6 @@
 // Uso exclusivo das rotas de API (nunca importar em componentes do navegador):
 // usa o token de acesso e o segredo do webhook do Mercado Pago.
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 
 const API = "https://api.mercadopago.com";
 
@@ -45,6 +45,47 @@ export async function criarPreferencia(e: PreferenciaEntrada): Promise<{ id: str
   const json = (await resp.json()) as { id?: string; init_point?: string };
   if (!json.id || !json.init_point) throw new Error("Mercado Pago não devolveu o link de pagamento.");
   return { id: json.id, url: json.init_point };
+}
+
+export interface PixEntrada {
+  faturaId: string;
+  companyId: string;
+  descricao: string;
+  valor: number;
+  emailPagador: string;
+  urlBase: string;
+  horasValidade?: number;
+}
+
+// Cria uma cobrança PIX direto na API de pagamentos: devolve o código copia e
+// cola para mostrar o QR Code no painel. O id da fatura vai em
+// external_reference, como no Checkout Pro, e o webhook dá baixa do mesmo jeito.
+export async function criarPix(e: PixEntrada): Promise<{ id: string; qr: string; expiraEm: string }> {
+  // Horário de Brasília com fuso explícito, formato aceito pelo Mercado Pago.
+  const expira = new Date(Date.now() + (e.horasValidade ?? 24) * 3_600_000 - 3 * 3_600_000)
+    .toISOString().replace("Z", "-03:00");
+  const resp = await fetch(`${API}/v1/payments`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token()}`, "Content-Type": "application/json", "X-Idempotency-Key": randomUUID() },
+    body: JSON.stringify({
+      transaction_amount: Number(e.valor.toFixed(2)),
+      description: e.descricao,
+      payment_method_id: "pix",
+      payer: { email: e.emailPagador },
+      external_reference: e.faturaId,
+      metadata: { fatura_id: e.faturaId, company_id: e.companyId },
+      notification_url: `${e.urlBase}/api/webhooks/mercadopago`,
+      date_of_expiration: expira,
+    }),
+  });
+  if (!resp.ok) throw new Error(`Mercado Pago ${resp.status}: ${(await resp.text()).slice(0, 300)}`);
+  const json = (await resp.json()) as {
+    id?: number | string; date_of_expiration?: string;
+    point_of_interaction?: { transaction_data?: { qr_code?: string } };
+  };
+  const qr = json.point_of_interaction?.transaction_data?.qr_code;
+  if (!json.id || !qr) throw new Error("Mercado Pago não devolveu o código PIX. Confira se a conta tem chave PIX cadastrada.");
+  return { id: String(json.id), qr, expiraEm: json.date_of_expiration ?? expira };
 }
 
 export interface PagamentoMP {

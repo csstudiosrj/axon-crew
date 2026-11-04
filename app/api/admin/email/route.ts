@@ -22,7 +22,6 @@ export async function POST(req: Request) {
 
   const db = supabaseServico();
   const cfg = await configPlataforma(db);
-  const pix = { chave: cfg.pix_chave, nome: cfg.pix_nome, cidade: cfg.pix_cidade };
 
   let email: Email;
   let companyId: string;
@@ -39,13 +38,13 @@ export async function POST(req: Request) {
     email = modelos.livre(empresa.name, pedido.assunto.trim(), pedido.mensagem);
   } else {
     const { data: f } = await db.from("faturas")
-      .select("id, numero, company_id, descricao, valor, vencimento, status, valor_pago, pago_em, companies(name)")
+      .select("id, numero, company_id, descricao, valor, vencimento, status, valor_pago, pago_em, token, companies(name)")
       .eq("id", pedido.fatura_id ?? "").single();
     if (!f) return Response.json({ erro: "Fatura não encontrada." }, { status: 404 });
     const empresa = (f.companies as unknown as { name: string } | null)?.name ?? "";
     const dados = {
       numero: f.numero, empresa, descricao: f.descricao, valor: Number(f.valor), vencimento: f.vencimento,
-      valor_pago: f.valor_pago != null ? Number(f.valor_pago) : null, pago_em: f.pago_em,
+      valor_pago: f.valor_pago != null ? Number(f.valor_pago) : null, pago_em: f.pago_em, token: f.token,
     };
     companyId = f.company_id;
     faturaId = f.id;
@@ -56,7 +55,7 @@ export async function POST(req: Request) {
       if (f.status !== "pendente") return Response.json({ erro: "Só faturas em aberto podem ser cobradas." }, { status: 400 });
       const hoje = new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
       const atraso = Math.max(0, Math.round((Date.parse(hoje) - Date.parse(f.vencimento)) / 86_400_000));
-      email = modelos.cobranca(dados, pix, atraso, pedido.mensagem);
+      email = modelos.cobranca(dados, atraso, pedido.mensagem);
       tipo = "cobranca_manual";
     }
   }

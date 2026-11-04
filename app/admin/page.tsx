@@ -16,7 +16,6 @@ interface Resumo {
   vencido: number;
   faturas_vencidas: number;
   empresas_inadimplentes: number;
-  pagamentos_informados: number;
   mensalidade_contratada: number;
   empresas_ativas: number;
   empresas_pagantes: number;
@@ -57,11 +56,11 @@ export default function AdminVisaoGeral() {
   const plural = (q: number, s: string, p = `${s}s`) => `${q} ${q === 1 ? s : p}`;
 
   const atencao = faturas
-    .filter((f) => f.status === "pendente" && (f.dias_atraso > 0 || f.pagamento_informado_em))
-    .sort((a, b) => Number(!!b.pagamento_informado_em) - Number(!!a.pagamento_informado_em) || b.dias_atraso - a.dias_atraso)
+    .filter((f) => f.status === "pendente" && f.dias_atraso > 0)
+    .sort((a, b) => b.dias_atraso - a.dias_atraso)
     .slice(0, 8);
   const proximas = faturas
-    .filter((f) => f.status === "pendente" && f.dias_atraso === 0 && !f.pagamento_informado_em)
+    .filter((f) => f.status === "pendente" && f.dias_atraso === 0)
     .sort((a, b) => a.vencimento.localeCompare(b.vencimento))
     .slice(0, 6);
   const abertos = chamados.filter((c) => c.status === "aberto").slice(0, 6);
@@ -93,7 +92,6 @@ export default function AdminVisaoGeral() {
             { rotulo: "Em plano pago", valor: resumo.empresas_pagantes, href: "/admin/empresas" },
             { rotulo: "Novas nos últimos 30 dias", valor: resumo.novas_30d, href: "/admin/empresas" },
             { rotulo: "Suspensas", valor: resumo.empresas_suspensas, href: "/admin/empresas" },
-            { rotulo: "Pagamentos informados", valor: resumo.pagamentos_informados, href: "/admin/cobranca" },
             { rotulo: "Chamados aguardando", valor: resumo.chamados_abertos, href: "/admin/suporte" },
           ].map((l) => (
             <Link key={l.rotulo} href={l.href} className="flex items-center justify-between text-[14px] text-arx-mist hover:text-white">

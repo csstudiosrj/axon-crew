@@ -7,12 +7,11 @@ import { formatarBRL, dataBR } from "@/lib/validacao";
 import { card, campo, botaoPrimario, botaoSecundario, Modal, BotoesModal, Carregando, Rotulo, usePainelAdmin, MESES } from "@/components/admin/ui";
 import { TabelaFaturas, NovaFatura, type Fatura } from "@/components/admin/Faturas";
 
-type Filtro = "abertas" | "vencidas" | "informadas" | "pagas" | "canceladas" | "todas";
+type Filtro = "abertas" | "vencidas" | "pagas" | "canceladas" | "todas";
 
 const FILTROS: { id: Filtro; nome: string; teste: (f: Fatura) => boolean }[] = [
   { id: "abertas", nome: "Em aberto", teste: (f) => f.status === "pendente" },
   { id: "vencidas", nome: "Vencidas", teste: (f) => f.status === "pendente" && f.dias_atraso > 0 },
-  { id: "informadas", nome: "Pagamento informado", teste: (f) => f.status === "pendente" && !!f.pagamento_informado_em },
   { id: "pagas", nome: "Pagas", teste: (f) => f.status === "paga" },
   { id: "canceladas", nome: "Canceladas", teste: (f) => f.status === "cancelada" },
   { id: "todas", nome: "Todas", teste: () => true },
@@ -119,7 +118,7 @@ export default function AdminCobranca() {
         <p className="mt-1">
           Todo dia às 9h a rotina automática gera as mensalidades do mês das empresas em plano pago e envia os avisos por e-mail:
           fatura disponível, lembrete antes do vencimento, aviso no dia, cobranças depois do vencimento e agradecimento quando você registra o pagamento.
-          Os prazos ficam em Configurações. Quando a empresa paga por PIX, ela pode clicar em “Já paguei”: a fatura aparece aqui como “Informou pagamento” para você conferir no extrato e dar baixa.
+          Os prazos ficam em Configurações. O pagamento é feito por PIX ou cartão pelo Mercado Pago e a fatura é baixada sozinha, na hora. Para testar ou mandar o QR Code para uma empresa, use o botão de QR Code na fatura.
         </p>
       </div>
 

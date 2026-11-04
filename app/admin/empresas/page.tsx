@@ -12,7 +12,7 @@ import type { Empresa } from "@/components/admin/tipos";
 import { AcaoEmpresa, type Acao } from "@/components/admin/AcaoEmpresa";
 import type { Fatura } from "@/components/admin/Faturas";
 
-interface Financeiro { aberto: number; vencido: number; maiorAtraso: number; informou: boolean }
+interface Financeiro { aberto: number; vencido: number; maiorAtraso: number }
 
 // Todas as empresas: plano, uso, situação financeira e suspensão.
 export default function AdminEmpresas() {
@@ -32,11 +32,10 @@ export default function AdminEmpresas() {
     const mapa = new Map<string, Financeiro>();
     for (const fat of (f.data as Fatura[]) ?? []) {
       if (fat.status !== "pendente") continue;
-      const atual = mapa.get(fat.company_id) ?? { aberto: 0, vencido: 0, maiorAtraso: 0, informou: false };
+      const atual = mapa.get(fat.company_id) ?? { aberto: 0, vencido: 0, maiorAtraso: 0 };
       atual.aberto += Number(fat.valor);
       if (fat.dias_atraso > 0) atual.vencido += Number(fat.valor);
       atual.maiorAtraso = Math.max(atual.maiorAtraso, fat.dias_atraso);
-      atual.informou ||= !!fat.pagamento_informado_em;
       mapa.set(fat.company_id, atual);
     }
     setFinanceiro(mapa);
@@ -161,8 +160,8 @@ export default function AdminEmpresas() {
                   <td className="px-3 py-3.5 text-[13px]">
                     {!fin ? <span className="text-emerald-300/80">Em dia</span>
                       : fin.vencido > 0
-                        ? <span className="text-red-300">{formatarBRL(fin.vencido)} vencido<br /><span className="text-[12px] text-arx-slate">há {fin.maiorAtraso} {fin.maiorAtraso === 1 ? "dia" : "dias"}{fin.informou ? " · informou pagamento" : ""}</span></span>
-                        : <span className="text-amber-300">{formatarBRL(fin.aberto)} a vencer{fin.informou ? <><br /><span className="text-[12px] text-sky-300">informou pagamento</span></> : null}</span>}
+                        ? <span className="text-red-300">{formatarBRL(fin.vencido)} vencido<br /><span className="text-[12px] text-arx-slate">há {fin.maiorAtraso} {fin.maiorAtraso === 1 ? "dia" : "dias"}</span></span>
+                        : <span className="text-amber-300">{formatarBRL(fin.aberto)} a vencer</span>}
                   </td>
                   <td className={`px-3 py-3.5 text-right tabular-nums ${perto(e.profissionais, plano.maxProfissionais) ? "text-amber-300" : ""}`}>
                     {e.profissionais}{plano.maxProfissionais ? <span className="text-arx-slate">/{plano.maxProfissionais}</span> : null}
