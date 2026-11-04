@@ -8,9 +8,17 @@ const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"]
 const dmSans = DM_Sans({ variable: "--font-dm-sans", subsets: ["latin"] });
 const syne = Syne({ variable: "--font-syne", subsets: ["latin"], weight: ["700", "800"] });
 
+const title = "ARXUM Crew: gestão de equipes e freelancers para qualquer segmento";
+const description =
+  "Base de profissionais, escalas, confirmação pelo WhatsApp, check-in e pagamento por PIX em um só lugar. Para eventos, saúde, gastronomia, construção, segurança e outros segmentos. Comece grátis.";
+
 export const metadata: Metadata = {
-  title: "ARXUM Crew — Gestão de equipes e freelancers para eventos",
-  description: "Banco de freelancers, agenda de jobs, escala por função, call sheet com confirmação pelo WhatsApp e pagamentos via PIX em um só lugar.",
+  metadataBase: new URL("https://www.arxum.com.br"),
+  title: { default: title, template: "%s | ARXUM Crew" },
+  description,
+  alternates: { canonical: "/crew" },
+  openGraph: { type: "website", locale: "pt_BR", siteName: "ARXUM Crew", url: "/crew", title, description },
+  twitter: { card: "summary_large_image", title, description },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
